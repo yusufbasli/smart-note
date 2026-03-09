@@ -3,33 +3,38 @@
 .env.*
 !.env.example
 
-# ── Virtual environment ──────────────────────────────────────────────────────
+# ── Python (backend) ─────────────────────────────────────────────────────────
 .venv/
 venv/
 env/
-
-# ── Python cache ─────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
 .Python
-
-# ── Build / distribution ─────────────────────────────────────────────────────
 build/
 dist/
 *.egg-info/
 .eggs/
-
-# ── Testing ──────────────────────────────────────────────────────────────────
 .pytest_cache/
 .coverage
 htmlcov/
 coverage.xml
-
-# ── Type checking ────────────────────────────────────────────────────────────
 .mypy_cache/
-.dmypy.json
+
+# ── Node / Expo (frontend) ───────────────────────────────────────────────────
+node_modules/
+.expo/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
 
 # ── Editors / OS ─────────────────────────────────────────────────────────────
 .vscode/
