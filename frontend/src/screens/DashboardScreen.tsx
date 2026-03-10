@@ -31,6 +31,28 @@ const PERIOD_STAT_LABEL: Record<TaskPeriod, string> = {
   all:      "Total",
 };
 
+// Build next 60 days for the date picker
+const buildDateOptions = () => {
+  const opts: { label: string; dayName: string; iso: string; date: Date }[] = [];
+  const today = new Date();
+  for (let i = 0; i < 60; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    d.setHours(12, 0, 0, 0);
+    opts.push({
+      label:   d.getDate().toString(),
+      dayName: d.toLocaleDateString("en-US", { weekday: "short" }),
+      iso:     d.toISOString(),
+      date:    d,
+    });
+  }
+  return opts;
+};
+const DATE_OPTIONS = buildDateOptions();
+
+const toDateKey = (isoStr: string) => isoStr.slice(0, 10); // "YYYY-MM-DD"
+const todayKey  = () => new Date().toISOString().slice(0, 10);
+
 const dueDateForPeriod = (period: TaskPeriod): string | undefined => {
   const d = new Date();
   d.setHours(12, 0, 0, 0);
@@ -47,6 +69,12 @@ const getGreeting = () => {
   return "Good evening";
 };
 
+// For recurring tasks: treat as completed only if last_completed_date == today
+const isEffectivelyCompleted = (task: Task): boolean => {
+  if (!task.is_recurring) return task.is_completed;
+  return !!task.last_completed_date && toDateKey(task.last_completed_date) === todayKey();
+};
+
 export default function DashboardScreen() {
   const [period,   setPeriod]   = useState<TaskPeriod>("today");
   const [tasks,    setTasks]    = useState<Task[]>([]);
@@ -56,8 +84,10 @@ export default function DashboardScreen() {
   const [error,    setError]    = useState("");
 
   // Add-task inline row
-  const [showAdd,    setShowAdd]    = useState(false);
-  const [newText,    setNewText]    = useState("");
+  const [showAdd,      setShowAdd]      = useState(false);
+  const [newText,      setNewText]      = useState("");
+  const [isRecurring,  setIsRecurring]  = useState(false);
+  const [selectedDate, setSelectedDate] = useState<string | undefined>(dueDateForPeriod("today"));
   const [addLoading, setAddLoading] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
@@ -94,6 +124,8 @@ export default function DashboardScreen() {
     setPeriod(p);
     setShowAdd(false);
     setNewText("");
+    setIsRecurring(false);
+    setSelectedDate(dueDateForPeriod(p));
     loadTasks(p, false);
   };
 
@@ -106,15 +138,25 @@ export default function DashboardScreen() {
   // ── task actions ─────────────────────────────────────────────────────────
 
   const handleToggle = async (task: Task) => {
-    // optimistic update
+    const newCompleted = !isEffectivelyCompleted(task);
+    // Optimistic update
     setTasks((prev) =>
-      prev.map((t) => t.id === task.id ? { ...t, is_completed: !t.is_completed } : t)
+      prev.map((t) => t.id === task.id
+        ? {
+            ...t,
+            is_completed: newCompleted,
+            last_completed_date: task.is_recurring && newCompleted
+              ? new Date().toISOString()
+              : null,
+          }
+        : t)
     );
     try {
-      await dashboardTasksApi.update(task.id, { is_completed: !task.is_completed });
+      await dashboardTasksApi.update(task.id, { is_completed: newCompleted });
     } catch {
+      // Revert on failure
       setTasks((prev) =>
-        prev.map((t) => t.id === task.id ? { ...t, is_completed: task.is_completed } : t)
+        prev.map((t) => t.id === task.id ? task : t)
       );
     }
   };
@@ -124,10 +166,12 @@ export default function DashboardScreen() {
     if (!text || addLoading) return;
     setAddLoading(true);
     try {
-      const task = await dashboardTasksApi.create(text, dueDateForPeriod(period));
+      const due = isRecurring ? undefined : selectedDate;
+      const task = await dashboardTasksApi.create(text, due, isRecurring);
       setTasks((prev) => [task, ...prev]);
       setNewText("");
       setShowAdd(false);
+      setIsRecurring(false);
     } catch {
       // keep input open on failure
     } finally {
@@ -137,14 +181,14 @@ export default function DashboardScreen() {
 
   // ── derived stats ─────────────────────────────────────────────────────────
 
-  const pending   = tasks.filter((t) => !t.is_completed).length;
-  const completed = tasks.filter((t) =>  t.is_completed).length;
+  const pending   = tasks.filter((t) => !isEffectivelyCompleted(t)).length;
+  const completed = tasks.filter((t) =>  isEffectivelyCompleted(t)).length;
   const total     = tasks.length;
   const progressPct = total > 0 ? (completed / total) * 100 : 0;
   const maxCount    = summary.length > 0 ? Math.max(...summary.map((x) => x.count)) : 1;
 
-  const pendingTasks   = tasks.filter((t) => !t.is_completed);
-  const completedTasks = tasks.filter((t) =>  t.is_completed);
+  const pendingTasks   = tasks.filter((t) => !isEffectivelyCompleted(t));
+  const completedTasks = tasks.filter((t) =>  isEffectivelyCompleted(t));
 
   // ── render ────────────────────────────────────────────────────────────────
 
@@ -248,33 +292,70 @@ export default function DashboardScreen() {
 
           {/* Inline New-Task Input */}
           {showAdd && (
-            <View style={s.addRow}>
-              <TextInput
-                ref={inputRef}
-                style={s.addInput}
-                value={newText}
-                onChangeText={setNewText}
-                placeholder="New task…"
-                placeholderTextColor={colors.textMuted}
-                returnKeyType="done"
-                onSubmitEditing={handleAddTask}
-                maxLength={500}
-              />
+            <View style={s.addCard}>
+              <View style={s.addRow}>
+                <TextInput
+                  ref={inputRef}
+                  style={s.addInput}
+                  value={newText}
+                  onChangeText={setNewText}
+                  placeholder="New task…"
+                  placeholderTextColor={colors.textMuted}
+                  returnKeyType="done"
+                  onSubmitEditing={handleAddTask}
+                  maxLength={500}
+                />
+                <TouchableOpacity
+                  style={[s.addSaveBtn, (!newText.trim() || addLoading) && { opacity: 0.5 }]}
+                  onPress={handleAddTask}
+                  disabled={!newText.trim() || addLoading}
+                >
+                  {addLoading
+                    ? <ActivityIndicator size="small" color="#fff" />
+                    : <Text style={s.addSaveBtnText}>Save</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={s.addCancelBtn}
+                  onPress={() => { setShowAdd(false); setNewText(""); setIsRecurring(false); }}
+                >
+                  <Text style={s.addCancelBtnText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Recurring toggle */}
               <TouchableOpacity
-                style={[s.addSaveBtn, (!newText.trim() || addLoading) && { opacity: 0.5 }]}
-                onPress={handleAddTask}
-                disabled={!newText.trim() || addLoading}
+                style={s.recurringRow}
+                onPress={() => setIsRecurring((v) => !v)}
               >
-                {addLoading
-                  ? <ActivityIndicator size="small" color="#fff" />
-                  : <Text style={s.addSaveBtnText}>Save</Text>}
+                <View style={[s.recurringCheck, isRecurring && s.recurringCheckOn]}>
+                  {isRecurring && <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800" }}>✓</Text>}
+                </View>
+                <Text style={s.recurringLabel}>🔁  Daily routine (repeats every day)</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={s.addCancelBtn}
-                onPress={() => { setShowAdd(false); setNewText(""); }}
-              >
-                <Text style={s.addCancelBtnText}>✕</Text>
-              </TouchableOpacity>
+
+              {/* Date picker (hidden when recurring) */}
+              {!isRecurring && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={s.datePickerScroll}
+                  contentContainerStyle={s.datePickerRow}
+                >
+                  {DATE_OPTIONS.map((opt) => {
+                    const active = selectedDate && toDateKey(selectedDate) === toDateKey(opt.iso);
+                    return (
+                      <TouchableOpacity
+                        key={opt.iso}
+                        style={[s.datePill, active && s.datePillActive]}
+                        onPress={() => setSelectedDate(opt.iso)}
+                      >
+                        <Text style={[s.datePillDay, active && { color: "#fff" }]}>{opt.dayName}</Text>
+                        <Text style={[s.datePillNum, active && { color: "#fff" }]}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
             </View>
           )}
 
@@ -312,6 +393,7 @@ export default function DashboardScreen() {
                     <TaskRow
                       key={task.id}
                       task={task}
+                      effectivelyCompleted={isEffectivelyCompleted(task)}
                       onToggle={handleToggle}
                       hasBorder={i < pendingTasks.length - 1}
                     />
@@ -330,6 +412,7 @@ export default function DashboardScreen() {
                       <TaskRow
                         key={task.id}
                         task={task}
+                        effectivelyCompleted={isEffectivelyCompleted(task)}
                         onToggle={handleToggle}
                         hasBorder={i < completedTasks.length - 1}
                       />
@@ -380,10 +463,12 @@ export default function DashboardScreen() {
 
 function TaskRow({
   task,
+  effectivelyCompleted,
   onToggle,
   hasBorder,
 }: {
   task: Task;
+  effectivelyCompleted: boolean;
   onToggle: (t: Task) => void;
   hasBorder: boolean;
 }) {
@@ -393,22 +478,28 @@ function TaskRow({
       onPress={() => onToggle(task)}
       activeOpacity={0.7}
     >
-      <View style={[s.circle, task.is_completed && s.circleDone]}>
-        {task.is_completed && <Text style={s.checkmark}>✓</Text>}
+      <View style={[s.circle, effectivelyCompleted && s.circleDone]}>
+        {effectivelyCompleted && <Text style={s.checkmark}>✓</Text>}
       </View>
       <View style={{ flex: 1 }}>
-        <Text
-          style={[s.taskText, task.is_completed && s.taskTextDone]}
-          numberOfLines={2}
-        >
-          {task.task_text}
-        </Text>
-        {task.due_date && (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+          <Text
+            style={[s.taskText, effectivelyCompleted && s.taskTextDone]}
+            numberOfLines={2}
+          >
+            {task.task_text}
+          </Text>
+          {task.is_recurring && <Text style={s.recurringIcon}>🔁</Text>}
+        </View>
+        {task.due_date && !task.is_recurring && (
           <Text style={s.taskDue}>
             {new Date(task.due_date).toLocaleDateString("en-US", {
-              month: "short", day: "numeric",
+              weekday: "short", month: "short", day: "numeric",
             })}
           </Text>
+        )}
+        {task.is_recurring && (
+          <Text style={s.taskDue}>Repeats daily</Text>
         )}
       </View>
     </TouchableOpacity>
@@ -448,7 +539,8 @@ const s = StyleSheet.create({
   addBtn:        { backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 6, borderRadius: radius.full },
   addBtnText:    { color: "#fff", fontSize: 13, fontWeight: "700" },
 
-  addRow:        { flexDirection: "row", alignItems: "center", backgroundColor: colors.surface, borderRadius: radius.md, padding: 10, marginBottom: 12, gap: 8, ...shadow.sm, borderWidth: 1, borderColor: colors.primary },
+  addRow:        { flexDirection: "row", alignItems: "center", gap: 8 },
+  addCard:       { backgroundColor: colors.surface, borderRadius: radius.md, padding: 12, marginBottom: 12, gap: 10, ...shadow.sm, borderWidth: 1, borderColor: colors.primary },
   addInput:      { flex: 1, fontSize: 14, color: colors.textPrimary, paddingVertical: 4 },
   addSaveBtn:    { backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: 14, paddingVertical: 8 },
   addSaveBtnText:{ color: "#fff", fontWeight: "700", fontSize: 13 },
@@ -467,9 +559,22 @@ const s = StyleSheet.create({
   circle:      { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.border, marginRight: 12, marginTop: 1, alignItems: "center", justifyContent: "center" },
   circleDone:  { backgroundColor: colors.success, borderColor: colors.success },
   checkmark:   { color: "#fff", fontSize: 11, fontWeight: "700" },
-  taskText:    { fontSize: 14, color: colors.textPrimary, lineHeight: 20 },
+  taskText:    { fontSize: 14, color: colors.textPrimary, lineHeight: 20, flex: 1 },
   taskTextDone:{ color: colors.textMuted, textDecorationLine: "line-through" },
   taskDue:     { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  recurringIcon: { fontSize: 12 },
+
+  recurringRow:    { flexDirection: "row", alignItems: "center", gap: 8, paddingTop: 2 },
+  recurringCheck:  { width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  recurringCheckOn:{ backgroundColor: colors.primary, borderColor: colors.primary },
+  recurringLabel:  { fontSize: 13, color: colors.textSecondary },
+
+  datePickerScroll: { marginTop: 4, marginHorizontal: -4 },
+  datePickerRow:    { flexDirection: "row", gap: 6, paddingHorizontal: 4, paddingVertical: 4 },
+  datePill:         { alignItems: "center", borderRadius: radius.md, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: colors.borderLight, minWidth: 48 },
+  datePillActive:   { backgroundColor: colors.primary },
+  datePillDay:      { fontSize: 10, fontWeight: "600", color: colors.textMuted, textTransform: "uppercase" },
+  datePillNum:      { fontSize: 16, fontWeight: "800", color: colors.textPrimary, marginTop: 2 },
 
   catRow:      { paddingVertical: 12 },
   catBorder:   { borderBottomWidth: 1, borderBottomColor: colors.borderLight },

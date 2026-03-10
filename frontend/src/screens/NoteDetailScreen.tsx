@@ -32,7 +32,14 @@ export default function NoteDetailScreen({ navigation, route }: NotesScreenProps
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete", style: "destructive",
-        onPress: async () => { await deleteNote(noteId); navigation.goBack(); },
+        onPress: async () => {
+          try {
+            await deleteNote(noteId);
+            navigation.goBack();
+          } catch (e: any) {
+            Alert.alert("Error", e?.response?.data?.detail ?? "Failed to delete note. Please try again.");
+          }
+        },
       },
     ]);
   };

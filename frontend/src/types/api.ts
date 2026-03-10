@@ -17,7 +17,9 @@ export interface Task {
   note_id: string | null;
   task_text: string;
   is_completed: boolean;
+  is_recurring: boolean;
   due_date: string | null;
+  last_completed_date: string | null;
   created_at: string;
 }
 

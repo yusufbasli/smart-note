@@ -10,8 +10,8 @@ interface NotesState {
   // Actions
   fetchNotes: (params?: { category?: string; search?: string }) => Promise<void>;
   fetchNote: (id: string) => Promise<void>;
-  createNote: (title: string, content: string) => Promise<Note>;
-  updateNote: (id: string, data: { title?: string; content?: string }) => Promise<void>;
+  createNote: (title: string, content: string, ai_category?: string) => Promise<Note>;
+  updateNote: (id: string, data: { title?: string; content?: string; ai_category?: string | null }) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
   analyzeNote: (id: string) => Promise<void>;
   toggleTask: (noteId: string, task: Task) => Promise<void>;
@@ -43,8 +43,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
     }
   },
 
-  createNote: async (title, content) => {
-    const note = await notesApi.create({ title, content });
+  createNote: async (title, content, ai_category?) => {
+    const note = await notesApi.create({ title, content, ...(ai_category ? { ai_category } : {}) });
     set((s) => ({ notes: [note, ...s.notes] }));
     return note;
   },

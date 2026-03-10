@@ -30,8 +30,8 @@ export const dashboardTasksApi = {
       .get<Task[]>("/tasks/", { params: { period, include_completed } })
       .then((r) => r.data),
 
-  create: (task_text: string, due_date?: string) =>
-    client.post<Task>("/tasks/", { task_text, due_date }).then((r) => r.data),
+  create: (task_text: string, due_date?: string, is_recurring = false) =>
+    client.post<Task>("/tasks/", { task_text, due_date, is_recurring }).then((r) => r.data),
 
   update: (
     id: string,

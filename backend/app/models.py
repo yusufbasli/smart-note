@@ -1,8 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
+import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -86,7 +87,9 @@ class Task(Base):
     )
     task_text: Mapped[str] = mapped_column(String(500), nullable=False)
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_recurring: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_completed_date: Mapped[date | None] = mapped_column(sa.Date(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
