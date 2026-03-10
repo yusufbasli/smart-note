@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useLayoutEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -30,6 +30,16 @@ export default function NotesListScreen({ navigation }: NotesScreenProps<"NotesL
   );
 
   useEffect(() => { load(activeCategory, search); }, [activeCategory]);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity onPress={logout} style={{ paddingHorizontal: 4 }} activeOpacity={0.7}>
+          <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 13, fontWeight: "600" }}>Logout</Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, logout]);
 
   const handleSearch = () => load(activeCategory, search);
   const clearSearch = () => {
@@ -138,10 +148,6 @@ export default function NotesListScreen({ navigation }: NotesScreenProps<"NotesL
         <Text style={{ color: "#fff", fontSize: 28, lineHeight: 32, fontWeight: "300" }}>+</Text>
       </TouchableOpacity>
 
-      {/* Logout */}
-      <TouchableOpacity style={s.logoutBtn} onPress={logout}>
-        <Text style={s.logoutText}>Logout</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -163,8 +169,6 @@ const s = StyleSheet.create({
   cardBody:    { fontSize: 13, color: colors.textSecondary, lineHeight: 18, marginBottom: 6 },
   cardDate:    { fontSize: 11, color: colors.textMuted },
   fab:         { position: "absolute", bottom: 28, right: 24, backgroundColor: colors.primary, width: 58, height: 58, borderRadius: 29, alignItems: "center", justifyContent: "center", ...shadow.primary },
-  logoutBtn:   { position: "absolute", top: 10, right: 16 },
-  logoutText:  { color: colors.primary, fontSize: 13, fontWeight: "600" },
   emptyState:  { alignItems: "center", marginTop: 80 },
   emptyIcon:   { fontSize: 48, marginBottom: 12 },
   emptyTitle:  { fontSize: 17, fontWeight: "600", color: colors.textSecondary, marginBottom: 4 },

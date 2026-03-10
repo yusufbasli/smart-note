@@ -4,18 +4,28 @@ import {
   Text,
   ActivityIndicator,
   ScrollView,
+  RefreshControl,
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
 import { dashboardApi } from "../api/dashboard";
 import type { Task, CategorySummary } from "../types/api";
 import { colors, radius, shadow, CATEGORY_META } from "../theme";
+import { useAuthStore } from "../store/authStore";
+
+const getGreeting = () => {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+};
 
 export default function DashboardScreen() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [summary, setSummary] = useState<CategorySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const user = useAuthStore((s) => s.user);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,23 +73,35 @@ export default function DashboardScreen() {
   }
 
   return (
-    <ScrollView style={s.root} contentContainerStyle={s.content}>
-      {/* Stats row */}
-      <View style={s.statsRow}>
-        <View style={[s.statCard, { borderTopColor: colors.primary }]}>
-          <Text style={s.statNum}>{total}</Text>
-          <Text style={s.statLabel}>Tasks Today</Text>
-        </View>
-        <View style={[s.statCard, { borderTopColor: colors.success }]}>
-          <Text style={[s.statNum, { color: colors.success }]}>{completed}</Text>
-          <Text style={s.statLabel}>Completed</Text>
-        </View>
-        <View style={[s.statCard, { borderTopColor: colors.accent }]}>
-          <Text style={[s.statNum, { color: colors.accent }]}>{summary.length}</Text>
-          <Text style={s.statLabel}>Categories</Text>
+    <ScrollView
+      style={s.root}
+      contentContainerStyle={{ paddingBottom: 48 }}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor="#fff" />}
+    >
+      {/* Hero Banner */}
+      <View style={s.hero}>
+        <Text style={s.greeting}>{getGreeting()}, {user?.username ?? "there"} 👋</Text>
+        <Text style={s.heroDate}>
+          {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+        </Text>
+        <View style={s.heroStatsRow}>
+          <View style={s.heroStat}>
+            <Text style={s.heroStatNum}>{total}</Text>
+            <Text style={s.heroStatLabel}>Tasks Today</Text>
+          </View>
+          <View style={s.heroStat}>
+            <Text style={s.heroStatNum}>{completed}</Text>
+            <Text style={s.heroStatLabel}>Completed</Text>
+          </View>
+          <View style={s.heroStat}>
+            <Text style={s.heroStatNum}>{summary.length}</Text>
+            <Text style={s.heroStatLabel}>Categories</Text>
+          </View>
         </View>
       </View>
 
+      {/* Content Body */}
+      <View style={s.body}>
       {/* Today's Tasks */}
       <Text style={s.sectionTitle}>Today's Tasks</Text>
       {total === 0 ? (
@@ -142,28 +164,32 @@ export default function DashboardScreen() {
           })}
         </View>
       )}
+      </View>
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  root:         { flex: 1, backgroundColor: colors.bg },
-  content:      { padding: 16, paddingBottom: 48 },
+  root:         { flex: 1, backgroundColor: colors.primaryDark },
   centered:     { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, backgroundColor: colors.bg },
   loadingText:  { color: colors.textMuted, marginTop: 12, fontSize: 14 },
   errorText:    { color: colors.danger, textAlign: "center", marginBottom: 20, fontSize: 14 },
   retryBtn:     { backgroundColor: colors.primary, paddingHorizontal: 28, paddingVertical: 12, borderRadius: radius.md, ...shadow.primary },
   retryText:    { color: "#fff", fontWeight: "700" },
 
-  statsRow:     { flexDirection: "row", gap: 10, marginBottom: 24 },
-  statCard:     { flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, padding: 14, alignItems: "center", borderTopWidth: 3, ...shadow.sm },
-  statNum:      { fontSize: 26, fontWeight: "800", color: colors.primary },
-  statLabel:    { fontSize: 11, color: colors.textMuted, marginTop: 2, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+  hero:          { paddingHorizontal: 20, paddingTop: 22, paddingBottom: 40 },
+  greeting:      { fontSize: 22, fontWeight: "800", color: "#fff", letterSpacing: 0.2 },
+  heroDate:      { fontSize: 13, color: "rgba(255,255,255,0.55)", marginTop: 3, marginBottom: 22 },
+  heroStatsRow:  { flexDirection: "row", gap: 10 },
+  heroStat:      { flex: 1, backgroundColor: "rgba(255,255,255,0.13)", borderRadius: radius.lg, padding: 14, alignItems: "center" },
+  heroStatNum:   { fontSize: 26, fontWeight: "800", color: "#fff" },
+  heroStatLabel: { fontSize: 10, color: "rgba(255,255,255,0.65)", marginTop: 2, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
 
-  sectionTitle: { fontSize: 17, fontWeight: "800", color: colors.textPrimary, marginBottom: 12, letterSpacing: 0.2 },
-  emptyCard:    { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 32, alignItems: "center", ...shadow.sm },
+  body:         { backgroundColor: colors.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingTop: 24, marginTop: -20 },
+  sectionTitle: { fontSize: 16, fontWeight: "800", color: colors.textPrimary, marginBottom: 12, letterSpacing: 0.2 },
+  emptyCard:    { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 32, alignItems: "center", ...shadow.sm, marginBottom: 12 },
   emptyText:    { color: colors.textSecondary, fontSize: 14, fontWeight: "500" },
-  card:         { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 16, ...shadow.sm },
+  card:         { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 16, ...shadow.sm, marginBottom: 8 },
 
   progressHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
   progressLabel:  { fontSize: 13, fontWeight: "600", color: colors.textSecondary },

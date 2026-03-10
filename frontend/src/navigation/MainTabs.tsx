@@ -41,7 +41,7 @@ export default function MainTabs() {
           tabBarIcon: ({ focused }) => <TabIcon emoji="📊" focused={focused} />,
           headerShown: true,
           title: "Dashboard",
-          headerStyle: { backgroundColor: colors.primary },
+          headerStyle: { backgroundColor: colors.primaryDark },
           headerTintColor: "#fff",
           headerTitleStyle: { fontWeight: "800", fontSize: 17 },
         }}

@@ -33,6 +33,8 @@ export default function NotesStack() {
         component={NoteFormScreen}
         options={({ route }) => ({
           title: route.params?.noteId ? "Edit Note" : "New Note",
+          presentation: "modal",
+          animation: "slide_from_bottom",
         })}
       />
     </Stack.Navigator>
