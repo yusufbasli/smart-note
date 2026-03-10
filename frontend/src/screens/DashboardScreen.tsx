@@ -9,15 +9,7 @@ import {
 } from "react-native";
 import { dashboardApi } from "../api/dashboard";
 import type { Task, CategorySummary } from "../types/api";
-
-const CATEGORY_COLORS: Record<string, string> = {
-  "#work": "#3b82f6",
-  "#school": "#8b5cf6",
-  "#personal": "#10b981",
-  "#health": "#ef4444",
-  "#finance": "#f59e0b",
-  "#other": "#6b7280",
-};
+import { colors, radius, shadow, CATEGORY_META } from "../theme";
 
 export default function DashboardScreen() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -36,25 +28,24 @@ export default function DashboardScreen() {
       setTasks(t);
       setSummary(sm);
     } catch (e: any) {
-      console.error("Dashboard error:", e?.response?.status, e?.response?.data);
       setError(e?.response?.data?.detail ?? "Failed to load dashboard.");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const completed = tasks.filter((t) => t.is_completed).length;
   const total = tasks.length;
+  const progressPct = total > 0 ? (completed / total) * 100 : 0;
+  const maxCount = summary.length > 0 ? Math.max(...summary.map((x) => x.count)) : 1;
 
   if (loading) {
     return (
       <View style={s.centered}>
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={{ color: "#9ca3af", marginTop: 12 }}>Loading...</Text>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={s.loadingText}>Loading dashboard…</Text>
       </View>
     );
   }
@@ -62,10 +53,10 @@ export default function DashboardScreen() {
   if (error) {
     return (
       <View style={s.centered}>
-        <Text style={{ fontSize: 32, marginBottom: 12 }}>warning</Text>
-        <Text style={{ color: "#dc2626", textAlign: "center", marginBottom: 16 }}>{error}</Text>
+        <Text style={{ fontSize: 40, marginBottom: 12 }}>⚠️</Text>
+        <Text style={s.errorText}>{error}</Text>
         <TouchableOpacity style={s.retryBtn} onPress={load}>
-          <Text style={{ color: "#fff", fontWeight: "600" }}>Retry</Text>
+          <Text style={s.retryText}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
@@ -73,79 +64,124 @@ export default function DashboardScreen() {
 
   return (
     <ScrollView style={s.root} contentContainerStyle={s.content}>
-      <Text style={s.sectionTitle}>Today Tasks</Text>
+      {/* Stats row */}
+      <View style={s.statsRow}>
+        <View style={[s.statCard, { borderTopColor: colors.primary }]}>
+          <Text style={s.statNum}>{total}</Text>
+          <Text style={s.statLabel}>Tasks Today</Text>
+        </View>
+        <View style={[s.statCard, { borderTopColor: colors.success }]}>
+          <Text style={[s.statNum, { color: colors.success }]}>{completed}</Text>
+          <Text style={s.statLabel}>Completed</Text>
+        </View>
+        <View style={[s.statCard, { borderTopColor: colors.accent }]}>
+          <Text style={[s.statNum, { color: colors.accent }]}>{summary.length}</Text>
+          <Text style={s.statLabel}>Categories</Text>
+        </View>
+      </View>
+
+      {/* Today's Tasks */}
+      <Text style={s.sectionTitle}>Today's Tasks</Text>
       {total === 0 ? (
         <View style={s.emptyCard}>
-          <Text style={{ color: "#9ca3af" }}>No tasks due today!</Text>
+          <Text style={{ fontSize: 32, marginBottom: 8 }}>🎉</Text>
+          <Text style={s.emptyText}>No tasks due today!</Text>
         </View>
       ) : (
         <View style={s.card}>
+          {/* Progress */}
           <View style={s.progressHeader}>
             <Text style={s.progressLabel}>Progress</Text>
-            <Text style={s.progressCount}>{completed}/{total}</Text>
+            <Text style={s.progressCount}>{completed} of {total} done</Text>
           </View>
           <View style={s.progressTrack}>
-            <View style={[s.progressFill, { width: (total > 0 ? (completed / total) * 100 : 0) + "%" }]} />
+            <View style={[s.progressFill, { width: `${progressPct}%`, backgroundColor: progressPct === 100 ? colors.success : colors.primary }]} />
           </View>
-          {tasks.map((task, i) => (
-            <View key={task.id} style={[s.taskRow, i < tasks.length - 1 && s.taskBorder]}>
-              <View style={[s.circle, task.is_completed && s.circleActive]}>
-                {task.is_completed && <Text style={{ color: "#fff", fontSize: 10 }}>ok</Text>}
+          <View style={{ marginTop: 12 }}>
+            {tasks.map((task, i) => (
+              <View key={task.id} style={[s.taskRow, i < tasks.length - 1 && s.taskBorder]}>
+                <View style={[s.circle, task.is_completed && { backgroundColor: colors.success, borderColor: colors.success }]}>
+                  {task.is_completed && <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700" }}>✓</Text>}
+                </View>
+                <Text style={[s.taskText, task.is_completed && s.taskTextDone]} numberOfLines={2}>
+                  {task.task_text}
+                </Text>
               </View>
-              <Text style={[s.taskText, task.is_completed && s.taskTextDone]} numberOfLines={2}>
-                {task.task_text}
-              </Text>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
       )}
 
-      <Text style={[s.sectionTitle, { marginTop: 24 }]}>Notes by Category</Text>
+      {/* Notes by Category */}
+      <Text style={[s.sectionTitle, { marginTop: 28 }]}>Notes by Category</Text>
       {summary.length === 0 ? (
         <View style={s.emptyCard}>
-          <Text style={{ color: "#9ca3af" }}>No notes yet.</Text>
+          <Text style={{ fontSize: 32, marginBottom: 8 }}>📂</Text>
+          <Text style={s.emptyText}>No notes yet.</Text>
         </View>
       ) : (
-        <>
-          {summary.map((item) => {
-            const cat = item.category ?? "uncategorised";
-            const color = CATEGORY_COLORS[cat] ?? "#6b7280";
-            const maxCount = Math.max(...summary.map((x) => x.count));
+        <View style={s.card}>
+          {summary.map((item, i) => {
+            const cat = item.category ?? "#other";
+            const meta = CATEGORY_META[cat] ?? CATEGORY_META["#other"];
+            const barWidth = `${(item.count / maxCount) * 100}%`;
             return (
-              <View key={cat} style={[s.card, { marginBottom: 10 }]}>
-                <View style={s.progressHeader}>
-                  <Text style={[s.progressLabel, { color, fontWeight: "600" }]}>{cat}</Text>
-                  <Text style={s.progressCount}>{item.count} notes</Text>
+              <View key={cat} style={[s.catRow, i < summary.length - 1 && s.catBorder]}>
+                <View style={s.catLabelRow}>
+                  <Text style={s.catIcon}>{meta.icon}</Text>
+                  <Text style={[s.catName, { color: meta.bar }]}>{cat.replace("#", "")}</Text>
+                  <View style={[s.catBadge, { backgroundColor: meta.bg }]}>
+                    <Text style={[s.catBadgeText, { color: meta.text }]}>{item.count}</Text>
+                  </View>
                 </View>
                 <View style={s.progressTrack}>
-                  <View style={[s.progressFill, { backgroundColor: color, width: (item.count / maxCount) * 100 + "%" }]} />
+                  <View style={[s.progressFill, { width: barWidth as any, backgroundColor: meta.bar }]} />
                 </View>
               </View>
             );
           })}
-        </>
+        </View>
       )}
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  root:          { flex: 1, backgroundColor: "#f9fafb" },
-  content:       { padding: 16, paddingBottom: 40 },
-  centered:      { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, backgroundColor: "#f9fafb" },
-  sectionTitle:  { fontSize: 17, fontWeight: "700", color: "#111827", marginBottom: 12 },
-  emptyCard:     { backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 16, padding: 24, alignItems: "center", marginBottom: 12 },
-  card:          { backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 16, padding: 16, marginBottom: 8 },
-  progressHeader:{ flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
-  progressLabel: { fontSize: 13, color: "#6b7280" },
-  progressCount: { fontSize: 13, fontWeight: "600", color: "#374151" },
-  progressTrack: { height: 6, backgroundColor: "#f3f4f6", borderRadius: 999, overflow: "hidden" },
-  progressFill:  { height: 6, backgroundColor: "#2563eb", borderRadius: 999 },
-  taskRow:       { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
-  taskBorder:    { borderBottomWidth: 1, borderBottomColor: "#f3f4f6" },
-  circle:        { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: "#d1d5db", marginRight: 12, alignItems: "center", justifyContent: "center" },
-  circleActive:  { backgroundColor: "#2563eb", borderColor: "#2563eb" },
-  taskText:      { flex: 1, fontSize: 14, color: "#1f2937" },
-  taskTextDone:  { color: "#9ca3af", textDecorationLine: "line-through" },
-  retryBtn:      { backgroundColor: "#2563eb", paddingHorizontal: 24, paddingVertical: 10, borderRadius: 8 },
+  root:         { flex: 1, backgroundColor: colors.bg },
+  content:      { padding: 16, paddingBottom: 48 },
+  centered:     { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, backgroundColor: colors.bg },
+  loadingText:  { color: colors.textMuted, marginTop: 12, fontSize: 14 },
+  errorText:    { color: colors.danger, textAlign: "center", marginBottom: 20, fontSize: 14 },
+  retryBtn:     { backgroundColor: colors.primary, paddingHorizontal: 28, paddingVertical: 12, borderRadius: radius.md, ...shadow.primary },
+  retryText:    { color: "#fff", fontWeight: "700" },
+
+  statsRow:     { flexDirection: "row", gap: 10, marginBottom: 24 },
+  statCard:     { flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, padding: 14, alignItems: "center", borderTopWidth: 3, ...shadow.sm },
+  statNum:      { fontSize: 26, fontWeight: "800", color: colors.primary },
+  statLabel:    { fontSize: 11, color: colors.textMuted, marginTop: 2, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5 },
+
+  sectionTitle: { fontSize: 17, fontWeight: "800", color: colors.textPrimary, marginBottom: 12, letterSpacing: 0.2 },
+  emptyCard:    { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 32, alignItems: "center", ...shadow.sm },
+  emptyText:    { color: colors.textSecondary, fontSize: 14, fontWeight: "500" },
+  card:         { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 16, ...shadow.sm },
+
+  progressHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  progressLabel:  { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
+  progressCount:  { fontSize: 13, fontWeight: "700", color: colors.textPrimary },
+  progressTrack:  { height: 7, backgroundColor: colors.borderLight, borderRadius: radius.full, overflow: "hidden" },
+  progressFill:   { height: 7, backgroundColor: colors.primary, borderRadius: radius.full },
+
+  taskRow:     { flexDirection: "row", alignItems: "center", paddingVertical: 10 },
+  taskBorder:  { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  circle:      { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.border, marginRight: 12, alignItems: "center", justifyContent: "center" },
+  taskText:    { flex: 1, fontSize: 14, color: colors.textPrimary },
+  taskTextDone:{ color: colors.textMuted, textDecorationLine: "line-through" },
+
+  catRow:      { paddingVertical: 12 },
+  catBorder:   { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  catLabelRow: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  catIcon:     { fontSize: 16, marginRight: 6 },
+  catName:     { flex: 1, fontSize: 14, fontWeight: "700", textTransform: "capitalize" },
+  catBadge:    { borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
+  catBadgeText:{ fontSize: 12, fontWeight: "700" },
 });

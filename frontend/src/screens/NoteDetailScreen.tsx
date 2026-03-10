@@ -13,6 +13,7 @@ import { useNotesStore } from "../store/notesStore";
 import CategoryBadge from "../components/CategoryBadge";
 import TaskItem from "../components/TaskItem";
 import type { NotesScreenProps } from "../navigation/types";
+import { colors, radius, shadow, CATEGORY_META } from "../theme";
 
 export default function NoteDetailScreen({ navigation, route }: NotesScreenProps<"NoteDetail">) {
   const { noteId } = route.params;
@@ -49,46 +50,57 @@ export default function NoteDetailScreen({ navigation, route }: NotesScreenProps
 
   if (isLoading && !currentNote) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" }}>
-        <ActivityIndicator size="large" color="#2563eb" />
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
   if (!currentNote) return null;
 
+  const catMeta = currentNote.ai_category ? CATEGORY_META[currentNote.ai_category] : null;
+  const completedCount = currentNote.tasks.filter((t) => t.is_completed).length;
+
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#f9fafb" }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => fetchNote(noteId)} />}
+      style={{ flex: 1, backgroundColor: colors.bg }}
+      contentContainerStyle={{ paddingBottom: 48 }}
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => fetchNote(noteId)} tintColor={colors.primary} />}
     >
-      {/* Title + category */}
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-        <Text style={s.noteTitle}>{currentNote.title}</Text>
-        {currentNote.ai_category && <CategoryBadge category={currentNote.ai_category} />}
-      </View>
-      <Text style={s.dateText}>Updated {new Date(currentNote.updated_at).toLocaleString()}</Text>
-
-      {/* AI Summary */}
-      {currentNote.ai_summary && (
-        <View style={s.summaryBox}>
-          <Text style={s.summaryLabel}>AI SUMMARY</Text>
-          <Text style={s.summaryText}>{currentNote.ai_summary}</Text>
+      {/* Title card */}
+      <View style={[s.titleCard, catMeta && { borderTopColor: catMeta.bar }]}>
+        <View style={s.titleRow}>
+          <Text style={s.noteTitle}>{currentNote.title}</Text>
+          {currentNote.ai_category && <CategoryBadge category={currentNote.ai_category} />}
         </View>
-      )}
-
-      {/* Content */}
-      <View style={s.contentBox}>
-        <Text style={s.contentText}>{currentNote.content}</Text>
+        <Text style={s.dateText}>Updated {new Date(currentNote.updated_at).toLocaleString()}</Text>
       </View>
 
-      {/* Tasks */}
-      {currentNote.tasks.length > 0 && (
-        <View style={{ marginBottom: 16 }}>
-          <Text style={s.tasksHeader}>
-            Tasks ({currentNote.tasks.filter((t) => !t.is_completed).length} remaining)
-          </Text>
-          <View style={s.tasksList}>
+      <View style={{ paddingHorizontal: 16 }}>
+        {/* AI Summary */}
+        {currentNote.ai_summary && (
+          <View style={s.summaryBox}>
+            <View style={s.summaryHeader}>
+              <Text style={s.summaryLabel}>✨ AI SUMMARY</Text>
+            </View>
+            <Text style={s.summaryText}>{currentNote.ai_summary}</Text>
+          </View>
+        )}
+
+        {/* Content */}
+        <View style={s.contentBox}>
+          <Text style={s.contentLabel}>NOTE</Text>
+          <Text style={s.contentText}>{currentNote.content}</Text>
+        </View>
+
+        {/* Tasks */}
+        {currentNote.tasks.length > 0 && (
+          <View style={s.tasksBox}>
+            <View style={s.tasksHeader}>
+              <Text style={s.tasksTitle}>Tasks</Text>
+              <View style={s.tasksBadge}>
+                <Text style={s.tasksBadgeText}>{completedCount}/{currentNote.tasks.length}</Text>
+              </View>
+            </View>
             {currentNote.tasks.map((task, i) => (
               <TaskItem
                 key={task.id}
@@ -98,24 +110,31 @@ export default function NoteDetailScreen({ navigation, route }: NotesScreenProps
               />
             ))}
           </View>
+        )}
+
+        {/* Action row */}
+        <View style={s.actionRow}>
+          <TouchableOpacity
+            style={[s.actionBtn, s.actionBtnPrimary]}
+            onPress={() => navigation.navigate("NoteForm", { noteId })}
+          >
+            <Text style={s.actionBtnPrimaryText}>✏️  Edit</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[s.actionBtn, s.actionBtnSecondary]}
+            onPress={handleAnalyze}
+            disabled={analyzing}
+          >
+            {analyzing
+              ? <ActivityIndicator size="small" color={colors.primary} />
+              : <Text style={s.actionBtnSecondaryText}>✨  AI</Text>
+            }
+          </TouchableOpacity>
         </View>
-      )}
 
-      {/* Actions */}
-      <View style={{ gap: 12 }}>
-        <TouchableOpacity style={s.btnPrimary} onPress={() => navigation.navigate("NoteForm", { noteId })}>
-          <Text style={s.btnPrimaryText}>Edit Note</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={s.btnOutline} onPress={handleAnalyze} disabled={analyzing}>
-          {analyzing
-            ? <ActivityIndicator size="small" color="#2563eb" />
-            : <Text style={s.btnOutlineText}>✨ Re-analyze with AI</Text>
-          }
-        </TouchableOpacity>
-
-        <TouchableOpacity style={s.btnDanger} onPress={handleDelete}>
-          <Text style={s.btnDangerText}>Delete Note</Text>
+        <TouchableOpacity style={s.deleteBtn} onPress={handleDelete}>
+          <Text style={s.deleteBtnText}>Delete Note</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -123,19 +142,28 @@ export default function NoteDetailScreen({ navigation, route }: NotesScreenProps
 }
 
 const s = StyleSheet.create({
-  noteTitle:    { fontSize: 22, fontWeight: "700", color: "#111827", flex: 1, marginRight: 8 },
-  dateText:     { fontSize: 11, color: "#9ca3af", marginBottom: 16 },
-  summaryBox:   { backgroundColor: "#eff6ff", borderWidth: 1, borderColor: "#bfdbfe", borderRadius: 12, padding: 16, marginBottom: 16 },
-  summaryLabel: { fontSize: 11, fontWeight: "700", color: "#2563eb", marginBottom: 4 },
-  summaryText:  { fontSize: 13, color: "#374151" },
-  contentBox:   { backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 12, padding: 16, marginBottom: 16 },
-  contentText:  { fontSize: 15, color: "#1f2937", lineHeight: 24 },
-  tasksHeader:  { fontSize: 13, fontWeight: "600", color: "#374151", marginBottom: 8 },
-  tasksList:    { backgroundColor: "#fff", borderWidth: 1, borderColor: "#e5e7eb", borderRadius: 12, overflow: "hidden" },
-  btnPrimary:   { backgroundColor: "#2563eb", borderRadius: 12, paddingVertical: 13, alignItems: "center" },
-  btnPrimaryText: { color: "#fff", fontWeight: "600", fontSize: 15 },
-  btnOutline:   { backgroundColor: "#fff", borderWidth: 1, borderColor: "#2563eb", borderRadius: 12, paddingVertical: 13, alignItems: "center" },
-  btnOutlineText: { color: "#2563eb", fontWeight: "600", fontSize: 15 },
-  btnDanger:    { backgroundColor: "#fff", borderWidth: 1, borderColor: "#fca5a5", borderRadius: 12, paddingVertical: 13, alignItems: "center" },
-  btnDangerText:  { color: "#ef4444", fontWeight: "600", fontSize: 15 },
+  titleCard:       { backgroundColor: colors.surface, borderTopWidth: 3, borderTopColor: colors.primary, padding: 20, marginBottom: 16, ...shadow.sm },
+  titleRow:        { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 },
+  noteTitle:       { fontSize: 22, fontWeight: "800", color: colors.textPrimary, flex: 1, marginRight: 10, lineHeight: 28 },
+  dateText:        { fontSize: 11, color: colors.textMuted },
+  summaryBox:      { backgroundColor: "#EEF2FF", borderRadius: radius.lg, overflow: "hidden", marginBottom: 14 },
+  summaryHeader:   { backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8 },
+  summaryLabel:    { fontSize: 11, fontWeight: "800", color: "#fff", letterSpacing: 0.8 },
+  summaryText:     { fontSize: 14, color: colors.textPrimary, lineHeight: 22, padding: 14 },
+  contentBox:      { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 16, marginBottom: 14, ...shadow.sm },
+  contentLabel:    { fontSize: 10, fontWeight: "800", color: colors.textMuted, letterSpacing: 1, marginBottom: 10 },
+  contentText:     { fontSize: 15, color: colors.textPrimary, lineHeight: 26 },
+  tasksBox:        { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: "hidden", marginBottom: 20, ...shadow.sm },
+  tasksHeader:     { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  tasksTitle:      { fontSize: 14, fontWeight: "700", color: colors.textPrimary, flex: 1 },
+  tasksBadge:      { backgroundColor: colors.primary, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
+  tasksBadgeText:  { color: "#fff", fontSize: 11, fontWeight: "700" },
+  actionRow:       { flexDirection: "row", gap: 12, marginBottom: 12 },
+  actionBtn:       { flex: 1, borderRadius: radius.md, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
+  actionBtnPrimary:{ backgroundColor: colors.primary, ...shadow.primary },
+  actionBtnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 15 },
+  actionBtnSecondary:   { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primary, ...shadow.sm },
+  actionBtnSecondaryText: { color: colors.primary, fontWeight: "700", fontSize: 15 },
+  deleteBtn:       { borderRadius: radius.md, paddingVertical: 13, alignItems: "center", borderWidth: 1.5, borderColor: colors.danger },
+  deleteBtnText:   { color: colors.danger, fontWeight: "600", fontSize: 15 },
 });
