@@ -56,7 +56,7 @@ def create_note(
             # Auto-create tasks detected by the AI
             for task_text in ai_result.get("tasks", []):
                 if task_text and task_text.strip():
-                    db.add(Task(note_id=note.id, task_text=task_text.strip()))
+                    db.add(Task(note_id=note.id, user_id=current_user.id, task_text=task_text.strip()))
             db.commit()
             db.refresh(note)
     except Exception:

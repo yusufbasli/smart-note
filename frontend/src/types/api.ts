@@ -14,7 +14,7 @@ export interface Token {
 
 export interface Task {
   id: string;
-  note_id: string;
+  note_id: string | null;
   task_text: string;
   is_completed: boolean;
   due_date: string | null;

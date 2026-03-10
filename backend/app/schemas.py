@@ -84,7 +84,7 @@ class TaskUpdate(BaseModel):
 
 class TaskRead(BaseModel):
     id: uuid.UUID
-    note_id: uuid.UUID
+    note_id: uuid.UUID | None  # None for standalone tasks
     task_text: str
     is_completed: bool
     due_date: datetime | None

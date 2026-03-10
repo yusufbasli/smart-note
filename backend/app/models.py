@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -60,7 +61,11 @@ class Note(Base):
     # Relationships
     user: Mapped["User"] = relationship("User", back_populates="notes")
     tasks: Mapped[list["Task"]] = relationship(
-        "Task", back_populates="note", cascade="all, delete-orphan", lazy="select"
+        "Task",
+        back_populates="note",
+        cascade="save-update, merge, delete",
+        passive_deletes=True,
+        lazy="select",
     )
 
     def __repr__(self) -> str:
@@ -73,8 +78,11 @@ class Task(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    note_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("notes.id", ondelete="CASCADE"), nullable=False, index=True
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    note_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("notes.id", ondelete="CASCADE"), nullable=True, index=True
     )
     task_text: Mapped[str] = mapped_column(String(500), nullable=False)
     is_completed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -84,7 +92,7 @@ class Task(Base):
     )
 
     # Relationships
-    note: Mapped["Note"] = relationship("Note", back_populates="tasks")
+    note: Mapped[Optional["Note"]] = relationship("Note", back_populates="tasks")
 
     def __repr__(self) -> str:
         return f"<Task id={self.id} completed={self.is_completed}>"
