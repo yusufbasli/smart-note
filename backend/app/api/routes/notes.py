@@ -1,10 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
+from app.limiter import limiter
 from app.models import Note, Task, User
 from app.schemas import NoteCreate, NoteRead, NoteReadWithTasks, NoteUpdate
 from app.services.ai_service import analyze_note
@@ -139,7 +140,9 @@ def delete_note(
     response_model=NoteReadWithTasks,
     summary="Re-run AI analysis on an existing note",
 )
+@limiter.limit("10/hour")
 def analyze_existing_note(
+    request: Request,
     note_id: uuid.UUID,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

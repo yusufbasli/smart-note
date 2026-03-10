@@ -42,12 +42,12 @@ class TokenData(BaseModel):
 
 class NoteCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
-    content: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1, max_length=50_000)
 
 
 class NoteUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
-    content: str | None = Field(default=None, min_length=1)
+    content: str | None = Field(default=None, min_length=1, max_length=50_000)
 
 
 class NoteRead(BaseModel):
