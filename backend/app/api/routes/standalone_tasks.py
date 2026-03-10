@@ -1,4 +1,4 @@
-﻿"""Standalone task endpoints â€” tasks that may or may not be linked to a note.
+"""Standalone task endpoints -- tasks that may or may not be linked to a note.
 
 GET  /tasks/              list tasks (filtered by period + completed status)
 POST /tasks/              create standalone task
@@ -50,7 +50,7 @@ def _get_task_or_404(task_id: uuid.UUID, user_id: uuid.UUID, db: Session) -> Tas
     return task
 
 
-# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 @router.get(
@@ -76,7 +76,7 @@ def list_tasks(
         from sqlalchemy import or_
         date_filter = (Task.due_date >= start) & (Task.due_date < end)
         base = base.filter(or_(date_filter, Task.is_recurring == True))  # noqa: E712
-    # else: "all" â€” no date filter
+    # else: "all" -- no date filter
 
     return (
         base
