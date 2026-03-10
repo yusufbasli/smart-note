@@ -1,17 +1,17 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Text } from "react-native";
+import { Text, View, StyleSheet } from "react-native";
 import type { MainTabParamList } from "./types";
 import NotesStack from "./NotesStack";
 import DashboardScreen from "../screens/DashboardScreen";
+import { colors, shadow } from "../theme";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const NotesIcon = ({ color }: { color: string }) => (
-  <Text style={{ fontSize: 20, color }}>📝</Text>
-);
-const DashIcon = ({ color }: { color: string }) => (
-  <Text style={{ fontSize: 20, color }}>📊</Text>
+const TabIcon = ({ emoji, focused }: { emoji: string; focused: boolean }) => (
+  <View style={[ts.iconWrap, focused && ts.iconWrapActive]}>
+    <Text style={{ fontSize: 18 }}>{emoji}</Text>
+  </View>
 );
 
 export default function MainTabs() {
@@ -19,12 +19,10 @@ export default function MainTabs() {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#2563eb",
-        tabBarInactiveTintColor: "#9ca3af",
-        tabBarStyle: {
-          backgroundColor: "#fff",
-          borderTopColor: "#e5e7eb",
-        },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textMuted,
+        tabBarStyle: ts.tabBar,
+        tabBarLabelStyle: ts.tabLabel,
       }}
     >
       <Tab.Screen
@@ -32,7 +30,7 @@ export default function MainTabs() {
         component={NotesStack}
         options={{
           tabBarLabel: "Notes",
-          tabBarIcon: NotesIcon,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📝" focused={focused} />,
         }}
       />
       <Tab.Screen
@@ -40,14 +38,21 @@ export default function MainTabs() {
         component={DashboardScreen}
         options={{
           tabBarLabel: "Dashboard",
-          tabBarIcon: DashIcon,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="📊" focused={focused} />,
           headerShown: true,
           title: "Dashboard",
-          headerStyle: { backgroundColor: "#2563eb" },
+          headerStyle: { backgroundColor: colors.primaryDark },
           headerTintColor: "#fff",
-          headerTitleStyle: { fontWeight: "700" },
+          headerTitleStyle: { fontWeight: "800", fontSize: 17 },
         }}
       />
     </Tab.Navigator>
   );
 }
+
+const ts = StyleSheet.create({
+  tabBar:       { backgroundColor: colors.surface, borderTopColor: colors.borderLight, borderTopWidth: 1, height: 62, paddingBottom: 8, paddingTop: 4, ...shadow.sm },
+  tabLabel:     { fontSize: 11, fontWeight: "600" },
+  iconWrap:     { width: 36, height: 26, alignItems: "center", justifyContent: "center", borderRadius: 13 },
+  iconWrapActive:{ backgroundColor: "#EEF2FF" },
+});

@@ -6,11 +6,12 @@ An AI-powered note and task management REST API built with **FastAPI** and **Pos
 
 - **JWT Authentication** — register, login (username or e-mail), bearer token
 - **Notes CRUD** — create, read, update, delete with full-text search, category filter, and pagination
-- **Tasks CRUD** — tasks are nested under notes; support due dates and completion status
-- **AI Analysis** — GPT-4o-mini categorises a note, writes a summary, and extracts tasks automatically on creation; can be re-triggered at any time
+- **Tasks CRUD** — tasks can be nested under notes or created as standalone; support due dates, completion status, and recurring flag
+- **Standalone Tasks** — `/api/v1/tasks/` endpoint for tasks not linked to any note, with period filters (today / tomorrow / week / all) and recurring task support
+- **AI Analysis** — GPT-4o-mini categorises a note, writes a summary and a short title, and extracts tasks with automatic due-date inference; can be re-triggered at any time
 - **Dashboard** — today's incomplete tasks, note counts per AI category
 - **Alembic migrations** — schema-safe database upgrades without data loss
-- **57 automated tests** — full API coverage with an in-memory SQLite test database (no PostgreSQL required to run tests)
+- **66 automated tests** — full API coverage with an in-memory SQLite test database (no PostgreSQL required to run tests)
 
 ## Tech Stack
 
@@ -36,10 +37,11 @@ smart-note-backend/
 │   ├── auth.py            # bcrypt hashing, JWT create/decode, get_current_user
 │   ├── main.py            # FastAPI app, CORS, lifespan, router registration
 │   ├── api/routes/
-│   │   ├── auth.py        # POST /register  POST /login  GET /me
-│   │   ├── notes.py       # Full CRUD + AI analysis trigger
-│   │   ├── tasks.py       # Full CRUD (nested under notes)
-│   │   └── dashboard.py   # GET /tasks/today  GET /summary
+│   │   ├── auth.py             # POST /register  POST /login  GET /me
+│   │   ├── notes.py            # Full CRUD + AI analysis trigger
+│   │   ├── tasks.py            # Full CRUD (nested under notes)
+│   │   ├── standalone_tasks.py # Full CRUD for standalone tasks (/tasks/)
+│   │   └── dashboard.py        # GET /tasks/today  GET /summary
 │   └── services/
 │       └── ai_service.py  # GPT-4o-mini → {category, summary, tasks}
 ├── migrations/            # Alembic migration environment
@@ -144,14 +146,23 @@ All endpoints are prefixed with `/api/v1`.
 | `DELETE` | `/notes/{id}` | Delete note (cascade deletes tasks) |
 | `POST` | `/notes/{id}/analyze` | Re-run AI analysis on existing note |
 
-### Tasks
+### Note Tasks
 
 | Method | Endpoint | Description |
 |---|---|---|
 | `POST` | `/notes/{id}/tasks/` | Add a task to a note |
 | `GET` | `/notes/{id}/tasks/` | List tasks for a note |
-| `PATCH` | `/notes/{id}/tasks/{tid}` | Update text, completion, or due date |
+| `PATCH` | `/notes/{id}/tasks/{tid}` | Update text, completion, due date, or `is_recurring` |
 | `DELETE` | `/notes/{id}/tasks/{tid}` | Delete a task |
+
+### Standalone Tasks
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/tasks/` | List tasks (query: `period=today\|tomorrow\|week\|all`, `include_completed`) |
+| `POST` | `/tasks/` | Create a standalone task (not linked to any note) |
+| `PATCH` | `/tasks/{id}` | Update text, completion, due date, or `is_recurring` |
+| `DELETE` | `/tasks/{id}` | Delete a task |
 
 ### Dashboard
 
@@ -170,7 +181,7 @@ pytest tests/ -v
 ```
 
 ```
-57 passed in 19s
+66 passed in ~22s
 ```
 
 ## AI Behaviour
@@ -178,7 +189,10 @@ pytest tests/ -v
 - When a note is created, GPT-4o-mini analyses the content and returns:
   - `category` — one of `#work | #school | #personal | #health | #finance | #other`
   - `summary` — 1–2 sentence summary
-  - `tasks` — detected to-do items (automatically saved as Task rows)
+  - `short_title` — a 2–4 word suggested title
+  - `tasks` — detected to-do items as `{"text": "...", "when": "today|tomorrow|this week|null"}`; saved automatically as Task rows with inferred `due_date` values
+- `when` hints map to due dates at noon UTC: `today` → today, `tomorrow` → +1 day, `this week` → +7 days; tasks with no time context get no due date.
+- The user can pre-set a `category` when creating a note; AI will not override a manually chosen category.
 - If the OpenAI API key is not set, AI analysis is silently skipped — the note is saved normally.
 - AI errors are **non-fatal**: a network timeout or API error will never prevent a note from being saved.
 

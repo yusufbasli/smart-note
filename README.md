@@ -12,30 +12,50 @@ smart-note/
 
 ## Quick Start
 
-### Backend
-See [backend/README.md](backend/README.md)
+### Option 1 — Docker (Recommended)
 
+Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+```bash
+git clone https://github.com/yusufbasli/smart-note.git
+cd smart-note
+cp backend/.env.example backend/.env
+# Optional: add your OPENAI_API_KEY to backend/.env
+docker compose up --build
+```
+
+| Service | URL |
+|---|---|
+| Web App | http://localhost:3000 |
+| API (Swagger UI) | http://localhost:8000/docs |
+
+PostgreSQL is created automatically and migrations run on first start.
+
+### Option 2 — Manual
+
+**Backend:**
 ```bash
 cd backend
 pip install -r requirements.txt
-# configure .env (copy from .env.example)
+cp .env.example .env   # then edit DATABASE_URL and SECRET_KEY
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-### Frontend
+**Frontend:**
 ```bash
 cd frontend
 npm install
-npx expo start
+npx expo start         # opens mobile + web dev server
 ```
 
 ## Tech Stack
 
 | | Technology |
 |---|---|
-| Backend API | FastAPI, SQLAlchemy, PostgreSQL |
+| Backend API | FastAPI, SQLAlchemy 2.x, PostgreSQL |
 | Auth | JWT (python-jose) + bcrypt |
 | AI | OpenAI GPT-4o-mini |
-| Mobile & Web | Expo, React Native |
-| State management | TBD |
+| Mobile & Web | Expo, React Native, TypeScript |
+| Styling | NativeWind (Tailwind CSS for React Native) |
+| State management | Zustand + AsyncStorage |

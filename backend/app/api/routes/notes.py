@@ -1,4 +1,6 @@
 import uuid
+from datetime import datetime, timedelta, timezone
+from datetime import date as _date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
@@ -9,6 +11,23 @@ from app.limiter import limiter
 from app.models import Note, Task, User
 from app.schemas import NoteCreate, NoteRead, NoteReadWithTasks, NoteUpdate
 from app.services.ai_service import analyze_note
+
+
+def _when_to_due_date(when: str | None) -> datetime | None:
+    """Convert an AI 'when' hint (today/tomorrow/this week) to a noon-UTC datetime."""
+    if not when:
+        return None
+    today = _date.today()
+    w = when.lower().strip()
+    if w == "today":
+        d = today
+    elif w == "tomorrow":
+        d = today + timedelta(days=1)
+    elif w in ("this week", "week", "next week"):
+        d = today + timedelta(days=7)
+    else:
+        return None
+    return datetime(d.year, d.month, d.day, 12, 0, 0, tzinfo=timezone.utc)
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
 
@@ -42,6 +61,7 @@ def create_note(
         user_id=current_user.id,
         title=payload.title,
         content=payload.content,
+        ai_category=payload.ai_category,  # pre-set if user manually chose
     )
     db.add(note)
     db.commit()
@@ -51,12 +71,16 @@ def create_note(
     try:
         ai_result = analyze_note(note.content)
         if ai_result:
-            note.ai_category = ai_result.get("category")
+            # Respect manual category; only use AI category if none selected
+            if not note.ai_category:
+                note.ai_category = ai_result.get("category")
             note.ai_summary = ai_result.get("summary")
             # Auto-create tasks detected by the AI
-            for task_text in ai_result.get("tasks", []):
-                if task_text and task_text.strip():
-                    db.add(Task(note_id=note.id, task_text=task_text.strip()))
+            for task_obj in ai_result.get("tasks", []):
+                task_text = task_obj.get("text", "").strip() if isinstance(task_obj, dict) else str(task_obj).strip()
+                if task_text:
+                    due = _when_to_due_date(task_obj.get("when") if isinstance(task_obj, dict) else None)
+                    db.add(Task(note_id=note.id, user_id=current_user.id, task_text=task_text, due_date=due))
             db.commit()
             db.refresh(note)
     except Exception:
@@ -166,10 +190,11 @@ def analyze_existing_note(
 
     # Append tasks not already present (exact-text comparison)
     existing_texts = {t.task_text for t in note.tasks}
-    for task_text in ai_result.get("tasks", []):
-        task_text = task_text.strip()
+    for task_obj in ai_result.get("tasks", []):
+        task_text = task_obj.get("text", "").strip() if isinstance(task_obj, dict) else str(task_obj).strip()
         if task_text and task_text not in existing_texts:
-            db.add(Task(note_id=note.id, task_text=task_text))
+            due = _when_to_due_date(task_obj.get("when") if isinstance(task_obj, dict) else None)
+            db.add(Task(note_id=note.id, user_id=current_user.id, task_text=task_text, due_date=due))
             existing_texts.add(task_text)
 
     db.commit()

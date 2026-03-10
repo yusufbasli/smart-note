@@ -60,7 +60,10 @@ def test_successful_analysis_returns_parsed_dict():
     assert result is not None
     assert result["category"] == "#work"
     assert result["summary"] == "A note about work tasks."
-    assert result["tasks"] == ["Write report", "Send email"]
+    assert result["tasks"] == [
+        {"text": "Write report", "when": None},
+        {"text": "Send email", "when": None},
+    ]
 
 
 def test_tasks_defaults_to_empty_list_when_absent():

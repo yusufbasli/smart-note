@@ -1,7 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, date
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+_VALID_CATEGORIES = {"#work", "#school", "#personal", "#health", "#finance", "#other"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -43,11 +45,27 @@ class TokenData(BaseModel):
 class NoteCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     content: str = Field(..., min_length=1, max_length=50_000)
+    ai_category: str | None = None
+
+    @field_validator("ai_category")
+    @classmethod
+    def validate_category(cls, v: str | None) -> str | None:
+        if v is not None and v not in _VALID_CATEGORIES:
+            raise ValueError(f"Category must be one of: {', '.join(sorted(_VALID_CATEGORIES))}")
+        return v
 
 
 class NoteUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=255)
     content: str | None = Field(default=None, min_length=1, max_length=50_000)
+    ai_category: str | None = None
+
+    @field_validator("ai_category")
+    @classmethod
+    def validate_category(cls, v: str | None) -> str | None:
+        if v is not None and v not in _VALID_CATEGORIES:
+            raise ValueError(f"Category must be one of: {', '.join(sorted(_VALID_CATEGORIES))}")
+        return v
 
 
 class NoteRead(BaseModel):
@@ -74,20 +92,24 @@ class NoteReadWithTasks(NoteRead):
 class TaskCreate(BaseModel):
     task_text: str = Field(..., min_length=1, max_length=500)
     due_date: datetime | None = None
+    is_recurring: bool = False
 
 
 class TaskUpdate(BaseModel):
     task_text: str | None = Field(default=None, min_length=1, max_length=500)
     is_completed: bool | None = None
     due_date: datetime | None = None
+    is_recurring: bool | None = None
 
 
 class TaskRead(BaseModel):
     id: uuid.UUID
-    note_id: uuid.UUID
+    note_id: uuid.UUID | None  # None for standalone tasks
     task_text: str
     is_completed: bool
+    is_recurring: bool
     due_date: datetime | None
+    last_completed_date: date | None
     created_at: datetime
 
     model_config = {"from_attributes": True}

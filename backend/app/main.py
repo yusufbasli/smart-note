@@ -10,6 +10,7 @@ from app.database import Base, engine
 from app.limiter import limiter
 from app.api.routes import auth, notes, tasks
 from app.api.routes.dashboard import router as dashboard_router
+from app.api.routes.standalone_tasks import router as standalone_tasks_router
 
 
 @asynccontextmanager
@@ -49,6 +50,7 @@ API_PREFIX = "/api/v1"
 app.include_router(auth.router, prefix=API_PREFIX)
 app.include_router(notes.router, prefix=API_PREFIX)
 app.include_router(tasks.router, prefix=API_PREFIX)
+app.include_router(standalone_tasks_router, prefix=API_PREFIX)
 app.include_router(dashboard_router, prefix=API_PREFIX)
 
 

@@ -15,10 +15,10 @@ export const notesApi = {
   get: (id: string) =>
     client.get<NoteWithTasks>(`/notes/${id}`).then((r) => r.data),
 
-  create: (data: { title: string; content: string }) =>
+  create: (data: { title: string; content: string; ai_category?: string }) =>
     client.post<Note>("/notes", data).then((r) => r.data),
 
-  update: (id: string, data: { title?: string; content?: string }) =>
+  update: (id: string, data: { title?: string; content?: string; ai_category?: string | null }) =>
     client.patch<Note>(`/notes/${id}`, data).then((r) => r.data),
 
   delete: (id: string) => client.delete(`/notes/${id}`),

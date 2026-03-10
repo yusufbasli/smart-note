@@ -29,9 +29,12 @@ def get_tasks_today(
     Returns every incomplete task (is_completed=False) whose due_date falls on
     the requested day.  Tasks with no due_date are excluded.
     """
-    day = target_date or date.today()
-    day_start = datetime(day.year, day.month, day.day, 0, 0, 0, tzinfo=timezone.utc)
-    day_end = datetime(day.year, day.month, day.day, 23, 59, 59, 999999, tzinfo=timezone.utc)
+    # Use UTC date; SQLite stores datetimes as naive (no tzinfo) so comparisons
+    # must also use naive UTC datetimes to avoid TypeError.
+    utc_now = datetime.now(timezone.utc)
+    day = target_date or utc_now.date()
+    day_start = datetime(day.year, day.month, day.day, 0, 0, 0)
+    day_end = datetime(day.year, day.month, day.day, 23, 59, 59, 999999)
 
     return (
         db.query(Task)

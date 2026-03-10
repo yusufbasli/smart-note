@@ -4,6 +4,7 @@ import type { NotesStackParamList } from "./types";
 import NotesListScreen from "../screens/NotesListScreen";
 import NoteDetailScreen from "../screens/NoteDetailScreen";
 import NoteFormScreen from "../screens/NoteFormScreen";
+import { colors } from "../theme";
 
 const Stack = createNativeStackNavigator<NotesStackParamList>();
 
@@ -11,9 +12,10 @@ export default function NotesStack() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: "#2563eb" },
+        headerStyle: { backgroundColor: colors.primary },
         headerTintColor: "#fff",
-        headerTitleStyle: { fontWeight: "700" },
+        headerTitleStyle: { fontWeight: "800", fontSize: 17 },
+        headerShadowVisible: false,
       }}
     >
       <Stack.Screen
@@ -31,6 +33,8 @@ export default function NotesStack() {
         component={NoteFormScreen}
         options={({ route }) => ({
           title: route.params?.noteId ? "Edit Note" : "New Note",
+          presentation: "modal",
+          animation: "slide_from_bottom",
         })}
       />
     </Stack.Navigator>

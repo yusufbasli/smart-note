@@ -31,13 +31,19 @@ You are a note analysis assistant. Analyse the user's note content and respond w
 {
   "category": "<single category: #work | #school | #personal | #health | #finance | #other>",
   "summary": "<concise 1-2 sentence summary>",
-  "tasks": ["<task 1>", "<task 2>"]
+  "short_title": "<2-4 word title for the note>",
+  "tasks": [
+    {"text": "<task description>", "when": "<today | tomorrow | this week | null>"}
+  ]
 }
 
 Rules:
 - Return only valid JSON, no extra text.
 - tasks may be an empty list []; leave it empty if no explicit to-do items are found.
+- For each task, infer `when` from time context (e.g. "yarın/tomorrow" → "tomorrow", "bugün/today" → "today", "bu hafta/this week" → "this week"). Use null if no time is specified.
+- short_title must be 2-4 words, suitable as the note's title.
 - Infer the category from the content; use #other when uncertain.
+- The user may write in any language; respond with the same JSON schema regardless.
 """.strip()
 
 
@@ -75,7 +81,16 @@ def analyze_note(content: str) -> dict | None:
             logger.error("AI response is missing expected fields: %s", raw)
             return None
 
-        result.setdefault("tasks", [])
+        # Normalize tasks: accept both string items and {"text":..., "when":...} dicts
+        tasks_raw = result.get("tasks", [])
+        normalized: list[dict] = []
+        for t in tasks_raw:
+            if isinstance(t, str) and t.strip():
+                normalized.append({"text": t.strip(), "when": None})
+            elif isinstance(t, dict) and t.get("text"):
+                normalized.append({"text": str(t["text"]).strip(), "when": t.get("when")})
+        result["tasks"] = normalized
+        result.setdefault("short_title", "")
         return result
 
     except (OpenAIError, json.JSONDecodeError, KeyError) as exc:
