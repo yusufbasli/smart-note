@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,22 +18,25 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<"Register
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const register = useAuthStore((s) => s.register);
 
   const handleRegister = async () => {
+    setError("");
     if (!username.trim() || !email.trim() || !password) {
-      Alert.alert("Validation", "Please fill in all fields.");
+      setError("Please fill in all fields.");
       return;
     }
     setBusy(true);
     try {
       await register(username.trim(), email.trim(), password);
     } catch (e: any) {
+      console.error("Register error:", e);
       const detail = e?.response?.data?.detail;
       const msg = Array.isArray(detail)
         ? detail.map((d: any) => d?.msg ?? "").join("\n")
         : detail ?? "Registration failed.";
-      Alert.alert("Error", msg);
+      setError(msg);
     } finally {
       setBusy(false);
     }
@@ -58,6 +60,7 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<"Register
 
           {/* Form */}
           <View style={s.form}>
+            {error ? <Text style={s.errorBox}>{error}</Text> : null}
             <View>
               <Text style={s.label}>Username</Text>
               <TextInput
@@ -132,4 +135,5 @@ const s = StyleSheet.create({
   btnText:   { color: "#fff", fontWeight: "700", fontSize: 15 },
   footer:    { flexDirection: "row", justifyContent: "center", marginTop: 32 },
   link:      { color: "#2563eb", fontWeight: "600" },
+  errorBox:  { backgroundColor: "#fef2f2", borderWidth: 1, borderColor: "#fca5a5", borderRadius: 8, padding: 12, color: "#dc2626", fontSize: 14 },
 });

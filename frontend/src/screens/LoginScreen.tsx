@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -18,20 +17,23 @@ export default function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const login = useAuthStore((s) => s.login);
 
   const handleLogin = async () => {
+    setError("");
     if (!identifier.trim() || !password) {
-      Alert.alert("Validation", "Please fill in all fields.");
+      setError("Please fill in all fields.");
       return;
     }
     setBusy(true);
     try {
       await login(identifier.trim(), password);
     } catch (e: any) {
+      console.error("Login error:", e);
       const msg =
         e?.response?.data?.detail ?? "Login failed. Check your credentials.";
-      Alert.alert("Error", msg);
+      setError(msg);
     } finally {
       setBusy(false);
     }
@@ -55,6 +57,7 @@ export default function LoginScreen({ navigation }: AuthScreenProps<"Login">) {
 
           {/* Form */}
           <View style={s.form}>
+            {error ? <Text style={s.errorBox}>{error}</Text> : null}
             <View>
               <Text style={s.label}>Username or Email</Text>
               <TextInput
@@ -116,4 +119,5 @@ const s = StyleSheet.create({
   btnText:   { color: "#fff", fontWeight: "700", fontSize: 15 },
   footer:    { flexDirection: "row", justifyContent: "center", marginTop: 32 },
   link:      { color: "#2563eb", fontWeight: "600" },
+  errorBox:  { backgroundColor: "#fef2f2", borderWidth: 1, borderColor: "#fca5a5", borderRadius: 8, padding: 12, color: "#dc2626", fontSize: 14 },
 });
