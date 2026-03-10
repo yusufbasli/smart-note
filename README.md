@@ -34,8 +34,9 @@ npx expo start
 
 | | Technology |
 |---|---|
-| Backend API | FastAPI, SQLAlchemy, PostgreSQL |
+| Backend API | FastAPI, SQLAlchemy 2.x, PostgreSQL |
 | Auth | JWT (python-jose) + bcrypt |
 | AI | OpenAI GPT-4o-mini |
-| Mobile & Web | Expo, React Native |
-| State management | TBD |
+| Mobile & Web | Expo, React Native, TypeScript |
+| Styling | NativeWind (Tailwind CSS for React Native) |
+| State management | Zustand + AsyncStorage |
