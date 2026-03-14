@@ -13,6 +13,13 @@ An AI-powered note and task management REST API built with **FastAPI** and **Pos
 - **Alembic migrations** — schema-safe database upgrades without data loss
 - **66 automated tests** — full API coverage with an in-memory SQLite test database (no PostgreSQL required to run tests)
 
+## Internship Highlights
+
+- Clean REST API design with auth-protected resources
+- Reproducible DB schema lifecycle via Alembic migrations
+- Clear separation of concerns (routes, schemas, models, service layer)
+- Real-world failure handling for external AI dependency
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -179,6 +186,12 @@ pytest tests/ -v
 ```
 66 passed in ~22s
 ```
+
+## Troubleshooting
+
+- `503` on `/notes/{id}/analyze`: OpenAI key missing/invalid or quota exhausted.
+- `401 Unauthorized`: verify bearer token from `/auth/login` is sent.
+- DB connection errors: ensure PostgreSQL is running and `DATABASE_URL` matches credentials.
 
 ## AI Behaviour
 

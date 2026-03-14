@@ -61,3 +61,17 @@ npm run typecheck
 - Inline task management
 - Dashboard with period filters (`today`, `tomorrow`, `week`, `all`)
 - Standalone tasks with recurring support
+
+## Quick Demo Flow
+
+1. Register and log in.
+2. Create a note from the `+` button.
+3. Add tasks from note detail.
+4. Open Dashboard and verify task visibility by period.
+5. Edit, complete, and delete tasks from dashboard controls.
+
+## Troubleshooting
+
+- Cannot connect to API: check `EXPO_PUBLIC_API_BASE_URL` in `.env`.
+- App works on web but not mobile device: use your LAN IP instead of `localhost`.
+- AI action fails: backend may return `503` when OpenAI quota is unavailable.

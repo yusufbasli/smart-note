@@ -6,6 +6,13 @@ Smart Note is an AI-powered note and task manager with a FastAPI backend and an 
 - API docs on `http://localhost:8000/docs`
 - Mobile support via Expo (Android/iOS)
 
+## Why This Project Is Internship-Ready
+
+- Full-stack architecture (backend API + frontend app + database)
+- Production-like setup with Docker, migrations, and environment-based config
+- Authentication, validation, and test coverage on core backend flows
+- AI integration designed to fail safely (app still works if AI is unavailable)
+
 ## Repository Structure
 
 ```
@@ -91,6 +98,14 @@ npm run typecheck
 - Recurring task support with daily completion behavior
 - Dockerized local environment
 
+## Architecture (High Level)
+
+1. Frontend calls backend REST endpoints under `/api/v1`.
+2. Backend authenticates requests with JWT bearer tokens.
+3. Notes and tasks are persisted in PostgreSQL via SQLAlchemy.
+4. Optional OpenAI analysis enriches notes with category/summary/tasks.
+5. Alembic keeps schema changes versioned and reproducible.
+
 ## Example Usage
 
 Use this flow to quickly verify the app after startup:
@@ -130,6 +145,13 @@ The following screenshots reflect the current web UI flow:
 ### Dashboard (completed)
 
 ![Dashboard completed tasks](docs/screenshots/dashboard-completed.png)
+
+## Troubleshooting
+
+- `AI button returns 503`: check backend logs; most common cause is OpenAI `429 insufficient_quota`.
+- `docker compose` command not found: install Docker Desktop and restart terminal.
+- Dashboard task not visible: switch period tab (`today` / `tomorrow` / `week` / `all`) and confirm task due date.
+- Username validation error: use only letters, numbers, underscore (`^[a-zA-Z0-9_]+$`).
 
 ## Tech Stack
 
