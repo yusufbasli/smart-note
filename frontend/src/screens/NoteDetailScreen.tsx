@@ -16,6 +16,12 @@ import TaskItem from "../components/TaskItem";
 import type { NotesScreenProps } from "../navigation/types";
 import { colors, radius, shadow, CATEGORY_META } from "../theme";
 
+const todayNoonIso = () => {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  return d.toISOString();
+};
+
 export default function NoteDetailScreen({ navigation, route }: NotesScreenProps<"NoteDetail">) {
   const { noteId } = route.params;
   const { currentNote, fetchNote, deleteNote, analyzeNote, toggleTask, addTask, updateTask, deleteTask, isLoading } =
@@ -65,7 +71,7 @@ export default function NoteDetailScreen({ navigation, route }: NotesScreenProps
     if (!text || newTaskSaving) return;
     setNewTaskSaving(true);
     try {
-      await addTask(noteId, { task_text: text });
+      await addTask(noteId, { task_text: text, due_date: todayNoonIso() });
       setNewTaskText("");
     } catch (e: any) {
       Alert.alert("Error", e?.response?.data?.detail ?? "Failed to add task.");

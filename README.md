@@ -91,6 +91,46 @@ npm run typecheck
 - Recurring task support with daily completion behavior
 - Dockerized local environment
 
+## Example Usage
+
+Use this flow to quickly verify the app after startup:
+
+1. Open `http://localhost:3000` and create an account.
+2. Create a note from the `+` button in the notes screen.
+3. Open the note detail page and add tasks in the `Tasks` box.
+4. Go to `Dashboard` and switch period tabs (`today`, `tomorrow`, `week`, `all`) to view tasks.
+5. Mark tasks done, edit them, and delete them from dashboard controls.
+6. Trigger AI analysis with the `AI` button on note detail (requires valid OpenAI quota).
+
+Notes:
+
+- If AI returns `503`, check backend logs; the common cause is OpenAI `429 insufficient_quota`.
+- Task visibility on dashboard depends on due date + selected period.
+
+## Screenshots
+
+The following screenshots reflect the current web UI flow:
+
+### Register
+
+![Register screen](docs/screenshots/register.png)
+
+### Notes List
+
+![Notes list screen](docs/screenshots/notes-list.png)
+
+### Note Detail
+
+![Note detail screen](docs/screenshots/note-detail.png)
+
+### Dashboard (pending)
+
+![Dashboard pending tasks](docs/screenshots/dashboard-pending.png)
+
+### Dashboard (completed)
+
+![Dashboard completed tasks](docs/screenshots/dashboard-completed.png)
+
 ## Tech Stack
 
 | Layer | Technology |
