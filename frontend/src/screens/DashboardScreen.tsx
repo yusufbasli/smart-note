@@ -89,6 +89,11 @@ export default function DashboardScreen() {
   const [isRecurring,  setIsRecurring]  = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | undefined>(dueDateForPeriod("today"));
   const [addLoading, setAddLoading] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editRecurring, setEditRecurring] = useState(false);
+  const [editDate, setEditDate] = useState<string | undefined>(undefined);
+  const [editLoading, setEditLoading] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   const user = useAuthStore((s) => s.user);
@@ -176,6 +181,53 @@ export default function DashboardScreen() {
       // keep input open on failure
     } finally {
       setAddLoading(false);
+    }
+  };
+
+  const startEditTask = (task: Task) => {
+    setEditingTaskId(task.id);
+    setEditText(task.task_text);
+    setEditRecurring(task.is_recurring);
+    setEditDate(task.due_date ?? dueDateForPeriod(period));
+  };
+
+  const cancelEditTask = () => {
+    setEditingTaskId(null);
+    setEditText("");
+    setEditRecurring(false);
+    setEditDate(undefined);
+    setEditLoading(false);
+  };
+
+  const saveEditTask = async (taskId: string) => {
+    const text = editText.trim();
+    if (!text || editLoading) return;
+    setEditLoading(true);
+    try {
+      const payload = {
+        task_text: text,
+        is_recurring: editRecurring,
+        due_date: editRecurring ? null : editDate ?? null,
+      };
+      const updated = await dashboardTasksApi.update(taskId, payload);
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+      cancelEditTask();
+    } catch {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    const existing = tasks.find((t) => t.id === taskId);
+    if (!existing) return;
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    try {
+      await dashboardTasksApi.remove(taskId);
+      if (editingTaskId === taskId) {
+        cancelEditTask();
+      }
+    } catch {
+      setTasks((prev) => [existing, ...prev]);
     }
   };
 
@@ -390,13 +442,59 @@ export default function DashboardScreen() {
                     </View>
                   )}
                   {pendingTasks.map((task, i) => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      effectivelyCompleted={isEffectivelyCompleted(task)}
-                      onToggle={handleToggle}
-                      hasBorder={i < pendingTasks.length - 1}
-                    />
+                    <View key={task.id}>
+                      <TaskRow
+                        task={task}
+                        effectivelyCompleted={isEffectivelyCompleted(task)}
+                        onToggle={handleToggle}
+                        onEdit={startEditTask}
+                        onDelete={handleDeleteTask}
+                        hasBorder={i < pendingTasks.length - 1 || editingTaskId === task.id}
+                      />
+                      {editingTaskId === task.id && (
+                        <View style={s.editCard}>
+                          <TextInput
+                            value={editText}
+                            onChangeText={setEditText}
+                            placeholder="Task text"
+                            placeholderTextColor={colors.textMuted}
+                            style={s.editInput}
+                            maxLength={500}
+                          />
+                          <TouchableOpacity style={s.recurringRow} onPress={() => setEditRecurring((v) => !v)}>
+                            <View style={[s.recurringCheck, editRecurring && s.recurringCheckOn]}>
+                              {editRecurring && <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800" }}>✓</Text>}
+                            </View>
+                            <Text style={s.recurringLabel}>🔁 Daily routine</Text>
+                          </TouchableOpacity>
+                          {!editRecurring && (
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.datePickerScroll} contentContainerStyle={s.datePickerRow}>
+                              {DATE_OPTIONS.map((opt) => {
+                                const active = editDate && toDateKey(editDate) === toDateKey(opt.iso);
+                                return (
+                                  <TouchableOpacity key={opt.iso} style={[s.datePill, active && s.datePillActive]} onPress={() => setEditDate(opt.iso)}>
+                                    <Text style={[s.datePillDay, active && { color: "#fff" }]}>{opt.dayName}</Text>
+                                    <Text style={[s.datePillNum, active && { color: "#fff" }]}>{opt.label}</Text>
+                                  </TouchableOpacity>
+                                );
+                              })}
+                            </ScrollView>
+                          )}
+                          <View style={s.editActionsRow}>
+                            <TouchableOpacity
+                              style={[s.editSaveBtn, (!editText.trim() || editLoading) && { opacity: 0.5 }]}
+                              disabled={!editText.trim() || editLoading}
+                              onPress={() => saveEditTask(task.id)}
+                            >
+                              {editLoading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.editSaveBtnText}>Save</Text>}
+                            </TouchableOpacity>
+                            <TouchableOpacity style={s.editCancelBtn} onPress={cancelEditTask}>
+                              <Text style={s.editCancelBtnText}>Cancel</Text>
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      )}
+                    </View>
                   ))}
                 </View>
               )}
@@ -409,13 +507,59 @@ export default function DashboardScreen() {
                   </Text>
                   <View style={[s.card, { opacity: 0.7 }]}>
                     {completedTasks.map((task, i) => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        effectivelyCompleted={isEffectivelyCompleted(task)}
-                        onToggle={handleToggle}
-                        hasBorder={i < completedTasks.length - 1}
-                      />
+                      <View key={task.id}>
+                        <TaskRow
+                          task={task}
+                          effectivelyCompleted={isEffectivelyCompleted(task)}
+                          onToggle={handleToggle}
+                          onEdit={startEditTask}
+                          onDelete={handleDeleteTask}
+                          hasBorder={i < completedTasks.length - 1 || editingTaskId === task.id}
+                        />
+                        {editingTaskId === task.id && (
+                          <View style={s.editCard}>
+                            <TextInput
+                              value={editText}
+                              onChangeText={setEditText}
+                              placeholder="Task text"
+                              placeholderTextColor={colors.textMuted}
+                              style={s.editInput}
+                              maxLength={500}
+                            />
+                            <TouchableOpacity style={s.recurringRow} onPress={() => setEditRecurring((v) => !v)}>
+                              <View style={[s.recurringCheck, editRecurring && s.recurringCheckOn]}>
+                                {editRecurring && <Text style={{ color: "#fff", fontSize: 10, fontWeight: "800" }}>✓</Text>}
+                              </View>
+                              <Text style={s.recurringLabel}>🔁 Daily routine</Text>
+                            </TouchableOpacity>
+                            {!editRecurring && (
+                              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.datePickerScroll} contentContainerStyle={s.datePickerRow}>
+                                {DATE_OPTIONS.map((opt) => {
+                                  const active = editDate && toDateKey(editDate) === toDateKey(opt.iso);
+                                  return (
+                                    <TouchableOpacity key={opt.iso} style={[s.datePill, active && s.datePillActive]} onPress={() => setEditDate(opt.iso)}>
+                                      <Text style={[s.datePillDay, active && { color: "#fff" }]}>{opt.dayName}</Text>
+                                      <Text style={[s.datePillNum, active && { color: "#fff" }]}>{opt.label}</Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </ScrollView>
+                            )}
+                            <View style={s.editActionsRow}>
+                              <TouchableOpacity
+                                style={[s.editSaveBtn, (!editText.trim() || editLoading) && { opacity: 0.5 }]}
+                                disabled={!editText.trim() || editLoading}
+                                onPress={() => saveEditTask(task.id)}
+                              >
+                                {editLoading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.editSaveBtnText}>Save</Text>}
+                              </TouchableOpacity>
+                              <TouchableOpacity style={s.editCancelBtn} onPress={cancelEditTask}>
+                                <Text style={s.editCancelBtnText}>Cancel</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        )}
+                      </View>
                     ))}
                   </View>
                 </>
@@ -465,22 +609,24 @@ function TaskRow({
   task,
   effectivelyCompleted,
   onToggle,
+  onEdit,
+  onDelete,
   hasBorder,
 }: {
   task: Task;
   effectivelyCompleted: boolean;
   onToggle: (t: Task) => void;
+  onEdit: (t: Task) => void;
+  onDelete: (taskId: string) => void;
   hasBorder: boolean;
 }) {
   return (
-    <TouchableOpacity
-      style={[s.taskRow, hasBorder && s.taskBorder]}
-      onPress={() => onToggle(task)}
-      activeOpacity={0.7}
-    >
-      <View style={[s.circle, effectivelyCompleted && s.circleDone]}>
-        {effectivelyCompleted && <Text style={s.checkmark}>✓</Text>}
-      </View>
+    <View style={[s.taskRow, hasBorder && s.taskBorder]}>
+      <TouchableOpacity onPress={() => onToggle(task)} activeOpacity={0.7}>
+        <View style={[s.circle, effectivelyCompleted && s.circleDone]}>
+          {effectivelyCompleted && <Text style={s.checkmark}>✓</Text>}
+        </View>
+      </TouchableOpacity>
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
           <Text
@@ -502,7 +648,15 @@ function TaskRow({
           <Text style={s.taskDue}>Repeats daily</Text>
         )}
       </View>
-    </TouchableOpacity>
+      <View style={s.taskActions}>
+        <TouchableOpacity style={s.smallBtn} onPress={() => onEdit(task)}>
+          <Text style={s.smallBtnText}>Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.smallBtn, s.smallDeleteBtn]} onPress={() => onDelete(task.id)}>
+          <Text style={[s.smallBtnText, s.smallDeleteText]}>Del</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
@@ -563,11 +717,24 @@ const s = StyleSheet.create({
   taskTextDone:{ color: colors.textMuted, textDecorationLine: "line-through" },
   taskDue:     { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   recurringIcon: { fontSize: 12 },
+  taskActions: { flexDirection: "row", gap: 6, alignItems: "center" },
+  smallBtn:    { borderWidth: 1, borderColor: colors.border, borderRadius: radius.sm, paddingHorizontal: 8, paddingVertical: 5, backgroundColor: colors.surface },
+  smallBtnText:{ fontSize: 11, fontWeight: "700", color: colors.textSecondary },
+  smallDeleteBtn: { borderColor: colors.dangerLight, backgroundColor: colors.dangerLight },
+  smallDeleteText:{ color: colors.danger },
 
   recurringRow:    { flexDirection: "row", alignItems: "center", gap: 8, paddingTop: 2 },
   recurringCheck:  { width: 18, height: 18, borderRadius: 4, borderWidth: 1.5, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   recurringCheckOn:{ backgroundColor: colors.primary, borderColor: colors.primary },
   recurringLabel:  { fontSize: 13, color: colors.textSecondary },
+
+  editCard:        { backgroundColor: colors.bg, borderBottomWidth: 1, borderBottomColor: colors.borderLight, paddingHorizontal: 12, paddingBottom: 12, paddingTop: 6 },
+  editInput:       { borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: colors.surface, color: colors.textPrimary, fontSize: 14 },
+  editActionsRow:  { flexDirection: "row", gap: 8, marginTop: 8 },
+  editSaveBtn:     { backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8 },
+  editSaveBtnText: { color: "#fff", fontWeight: "700", fontSize: 12 },
+  editCancelBtn:   { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 8 },
+  editCancelBtnText: { color: colors.textSecondary, fontWeight: "700", fontSize: 12 },
 
   datePickerScroll: { marginTop: 4, marginHorizontal: -4 },
   datePickerRow:    { flexDirection: "row", gap: 6, paddingHorizontal: 4, paddingVertical: 4 },

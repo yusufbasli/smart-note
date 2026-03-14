@@ -3,17 +3,30 @@ import type { Task } from "../types/api";
 
 export type TaskPeriod = "today" | "tomorrow" | "week" | "all";
 
+export interface TaskCreatePayload {
+  task_text: string;
+  due_date?: string;
+  is_recurring?: boolean;
+}
+
+export interface TaskUpdatePayload {
+  task_text?: string;
+  is_completed?: boolean;
+  due_date?: string | null;
+  is_recurring?: boolean;
+}
+
 export const tasksApi = {
   list: (noteId: string) =>
     client.get<Task[]>(`/notes/${noteId}/tasks`).then((r) => r.data),
 
-  create: (noteId: string, data: { task_text: string; due_date?: string }) =>
+  create: (noteId: string, data: TaskCreatePayload) =>
     client.post<Task>(`/notes/${noteId}/tasks`, data).then((r) => r.data),
 
   update: (
     noteId: string,
     taskId: string,
-    data: { task_text?: string; is_completed?: boolean; due_date?: string | null }
+    data: TaskUpdatePayload
   ) =>
     client
       .patch<Task>(`/notes/${noteId}/tasks/${taskId}`, data)
@@ -35,7 +48,7 @@ export const dashboardTasksApi = {
 
   update: (
     id: string,
-    data: { task_text?: string; is_completed?: boolean; due_date?: string | null }
+    data: TaskUpdatePayload
   ) => client.patch<Task>(`/tasks/${id}`, data).then((r) => r.data),
 
   remove: (id: string) => client.delete(`/tasks/${id}`),

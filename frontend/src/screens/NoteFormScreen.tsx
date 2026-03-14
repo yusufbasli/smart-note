@@ -121,7 +121,7 @@ export default function NoteFormScreen({ navigation, route }: NotesScreenProps<"
           </View>
           <TextInput
             style={[s.input, s.textarea]}
-            placeholder="Write your note hereâ€¦"
+            placeholder="Write your note here..."
             placeholderTextColor={colors.textMuted}
             value={content}
             onChangeText={setContent}

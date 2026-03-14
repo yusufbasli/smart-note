@@ -40,7 +40,13 @@ def create_task(
     current_user: User = Depends(get_current_user),
 ) -> Task:
     _get_note_or_404(note_id, current_user.id, db)
-    task = Task(note_id=note_id, user_id=current_user.id, task_text=payload.task_text, due_date=payload.due_date)
+    task = Task(
+        note_id=note_id,
+        user_id=current_user.id,
+        task_text=payload.task_text.strip(),
+        due_date=payload.due_date,
+        is_recurring=payload.is_recurring,
+    )
     db.add(task)
     db.commit()
     db.refresh(task)

@@ -61,8 +61,8 @@ smart-note-backend/
 ### 1. Clone and create a virtual environment
 
 ```bash
-git clone https://github.com/<your-username>/smart-note-backend.git
-cd smart-note-backend
+git clone https://github.com/yusufbasli/smart-note.git
+cd smart-note/backend
 python -m venv .venv
 
 # Windows
@@ -106,10 +106,6 @@ CREATE DATABASE smartnote_db;
 ### 5. Run migrations
 
 ```bash
-# First time: generate the initial migration from the models
-.\.venv\Scripts\alembic revision --autogenerate -m "initial"
-
-# Apply to the database
 .\.venv\Scripts\alembic upgrade head
 ```
 

@@ -8,6 +8,7 @@ import {
   Alert,
   RefreshControl,
   StyleSheet,
+  TextInput,
 } from "react-native";
 import { useNotesStore } from "../store/notesStore";
 import CategoryBadge from "../components/CategoryBadge";
@@ -17,9 +18,13 @@ import { colors, radius, shadow, CATEGORY_META } from "../theme";
 
 export default function NoteDetailScreen({ navigation, route }: NotesScreenProps<"NoteDetail">) {
   const { noteId } = route.params;
-  const { currentNote, fetchNote, deleteNote, analyzeNote, toggleTask, isLoading } =
+  const { currentNote, fetchNote, deleteNote, analyzeNote, toggleTask, addTask, updateTask, deleteTask, isLoading } =
     useNotesStore();
   const [analyzing, setAnalyzing] = useState(false);
+  const [newTaskText, setNewTaskText] = useState("");
+  const [newTaskSaving, setNewTaskSaving] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editTaskText, setEditTaskText] = useState("");
 
   useEffect(() => { fetchNote(noteId); }, [noteId]);
 
@@ -53,6 +58,54 @@ export default function NoteDetailScreen({ navigation, route }: NotesScreenProps
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const handleAddTask = async () => {
+    const text = newTaskText.trim();
+    if (!text || newTaskSaving) return;
+    setNewTaskSaving(true);
+    try {
+      await addTask(noteId, { task_text: text });
+      setNewTaskText("");
+    } catch (e: any) {
+      Alert.alert("Error", e?.response?.data?.detail ?? "Failed to add task.");
+    } finally {
+      setNewTaskSaving(false);
+    }
+  };
+
+  const startEditTask = (taskId: string, currentText: string) => {
+    setEditingTaskId(taskId);
+    setEditTaskText(currentText);
+  };
+
+  const saveEditTask = async (taskId: string) => {
+    const text = editTaskText.trim();
+    if (!text) return;
+    try {
+      await updateTask(noteId, taskId, { task_text: text });
+      setEditingTaskId(null);
+      setEditTaskText("");
+    } catch (e: any) {
+      Alert.alert("Error", e?.response?.data?.detail ?? "Failed to update task.");
+    }
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await deleteTask(noteId, taskId);
+          } catch (e: any) {
+            Alert.alert("Error", e?.response?.data?.detail ?? "Failed to delete task.");
+          }
+        },
+      },
+    ]);
   };
 
   if (isLoading && !currentNote) {
@@ -100,24 +153,76 @@ export default function NoteDetailScreen({ navigation, route }: NotesScreenProps
         </View>
 
         {/* Tasks */}
-        {currentNote.tasks.length > 0 && (
-          <View style={s.tasksBox}>
-            <View style={s.tasksHeader}>
-              <Text style={s.tasksTitle}>Tasks</Text>
-              <View style={s.tasksBadge}>
-                <Text style={s.tasksBadgeText}>{completedCount}/{currentNote.tasks.length}</Text>
-              </View>
+        <View style={s.tasksBox}>
+          <View style={s.tasksHeader}>
+            <Text style={s.tasksTitle}>Tasks</Text>
+            <View style={s.tasksBadge}>
+              <Text style={s.tasksBadgeText}>{completedCount}/{currentNote.tasks.length}</Text>
             </View>
-            {currentNote.tasks.map((task, i) => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onToggle={() => toggleTask(noteId, task)}
-                showBorder={i < currentNote.tasks.length - 1}
-              />
-            ))}
           </View>
-        )}
+
+          <View style={s.taskCreateRow}>
+            <TextInput
+              value={newTaskText}
+              onChangeText={setNewTaskText}
+              placeholder="Add a task"
+              placeholderTextColor={colors.textMuted}
+              style={s.taskInput}
+              maxLength={500}
+              returnKeyType="done"
+              onSubmitEditing={handleAddTask}
+            />
+            <TouchableOpacity
+              style={[s.taskAddBtn, (!newTaskText.trim() || newTaskSaving) && { opacity: 0.5 }]}
+              disabled={!newTaskText.trim() || newTaskSaving}
+              onPress={handleAddTask}
+            >
+              {newTaskSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.taskAddText}>Add</Text>}
+            </TouchableOpacity>
+          </View>
+
+          {currentNote.tasks.length > 0 ? (
+            currentNote.tasks.map((task, i) => (
+              <View key={task.id}>
+                <TaskItem
+                  task={task}
+                  onToggle={() => toggleTask(noteId, task)}
+                  onEdit={() => startEditTask(task.id, task.task_text)}
+                  onDelete={() => handleDeleteTask(task.id)}
+                  showBorder={i < currentNote.tasks.length - 1 || editingTaskId === task.id}
+                />
+                {editingTaskId === task.id && (
+                  <View style={s.editTaskRow}>
+                    <TextInput
+                      value={editTaskText}
+                      onChangeText={setEditTaskText}
+                      placeholder="Task text"
+                      placeholderTextColor={colors.textMuted}
+                      style={s.editTaskInput}
+                      maxLength={500}
+                    />
+                    <View style={s.editActionsRow}>
+                      <TouchableOpacity style={s.editSaveBtn} onPress={() => saveEditTask(task.id)}>
+                        <Text style={s.editSaveText}>Save</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={s.editCancelBtn}
+                        onPress={() => {
+                          setEditingTaskId(null);
+                          setEditTaskText("");
+                        }}
+                      >
+                        <Text style={s.editCancelText}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            ))
+          ) : (
+            <Text style={s.noTaskText}>No tasks yet.</Text>
+          )}
+        </View>
 
         {/* Action row */}
         <View style={s.actionRow}>
@@ -165,6 +270,18 @@ const s = StyleSheet.create({
   tasksTitle:      { fontSize: 14, fontWeight: "700", color: colors.textPrimary, flex: 1 },
   tasksBadge:      { backgroundColor: colors.primary, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
   tasksBadgeText:  { color: "#fff", fontSize: 11, fontWeight: "700" },
+  taskCreateRow:   { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  taskInput:       { flex: 1, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.textPrimary, backgroundColor: colors.bg },
+  taskAddBtn:      { backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: 14, justifyContent: "center" },
+  taskAddText:     { color: "#fff", fontWeight: "700", fontSize: 13 },
+  noTaskText:      { color: colors.textMuted, fontSize: 13, paddingHorizontal: 16, paddingBottom: 16, paddingTop: 6 },
+  editTaskRow:     { paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight, backgroundColor: colors.bg },
+  editTaskInput:   { borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.textPrimary, backgroundColor: colors.surface },
+  editActionsRow:  { flexDirection: "row", gap: 8, marginTop: 8 },
+  editSaveBtn:     { backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8 },
+  editSaveText:    { color: "#fff", fontWeight: "700", fontSize: 12 },
+  editCancelBtn:   { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 8 },
+  editCancelText:  { color: colors.textSecondary, fontWeight: "700", fontSize: 12 },
   actionRow:       { flexDirection: "row", gap: 12, marginBottom: 12 },
   actionBtn:       { flex: 1, borderRadius: radius.md, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
   actionBtnPrimary:{ backgroundColor: colors.primary, ...shadow.primary },

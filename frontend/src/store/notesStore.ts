@@ -15,6 +15,9 @@ interface NotesState {
   deleteNote: (id: string) => Promise<void>;
   analyzeNote: (id: string) => Promise<void>;
   toggleTask: (noteId: string, task: Task) => Promise<void>;
+  addTask: (noteId: string, data: { task_text: string; due_date?: string; is_recurring?: boolean }) => Promise<void>;
+  updateTask: (noteId: string, taskId: string, data: { task_text?: string; due_date?: string | null; is_recurring?: boolean }) => Promise<void>;
+  deleteTask: (noteId: string, taskId: string) => Promise<void>;
   clearCurrentNote: () => void;
 }
 
@@ -83,6 +86,45 @@ export const useNotesStore = create<NotesState>((set, get) => ({
         currentNote: {
           ...s.currentNote,
           tasks: s.currentNote.tasks.map((t) => (t.id === task.id ? updated : t)),
+        },
+      };
+    });
+  },
+
+  addTask: async (noteId, data) => {
+    const created = await tasksApi.create(noteId, data);
+    set((s) => {
+      if (!s.currentNote || s.currentNote.id !== noteId) return {};
+      return {
+        currentNote: {
+          ...s.currentNote,
+          tasks: [...s.currentNote.tasks, created],
+        },
+      };
+    });
+  },
+
+  updateTask: async (noteId, taskId, data) => {
+    const updated = await tasksApi.update(noteId, taskId, data);
+    set((s) => {
+      if (!s.currentNote || s.currentNote.id !== noteId) return {};
+      return {
+        currentNote: {
+          ...s.currentNote,
+          tasks: s.currentNote.tasks.map((t) => (t.id === taskId ? updated : t)),
+        },
+      };
+    });
+  },
+
+  deleteTask: async (noteId, taskId) => {
+    await tasksApi.delete(noteId, taskId);
+    set((s) => {
+      if (!s.currentNote || s.currentNote.id !== noteId) return {};
+      return {
+        currentNote: {
+          ...s.currentNote,
+          tasks: s.currentNote.tasks.filter((t) => t.id !== taskId),
         },
       };
     });
