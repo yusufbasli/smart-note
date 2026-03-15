@@ -663,7 +663,7 @@ function TaskRow({
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  root:         { flex: 1, backgroundColor: colors.primaryDark },
+  root:         { flex: 1, backgroundColor: colors.navy },
   centered:     { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, backgroundColor: colors.bg },
   loadingText:  { color: colors.textMuted, marginTop: 12, fontSize: 14 },
   errorText:    { color: colors.danger, textAlign: "center", marginBottom: 20, fontSize: 14 },

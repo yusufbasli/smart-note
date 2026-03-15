@@ -25,6 +25,16 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Module-level client — created once when the API key is first needed.
+_client: OpenAI | None = None
+
+
+def _get_client() -> OpenAI:
+    global _client
+    if _client is None:
+        _client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    return _client
+
 _SYSTEM_PROMPT = """
 You are a note analysis assistant. Analyse the user's note content and respond with the following JSON format:
 
@@ -59,7 +69,7 @@ def analyze_note(content: str) -> dict | None:
         logger.warning("OPENAI_API_KEY not configured; AI analysis skipped.")
         return None
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    client = _get_client()
 
     try:
         response = client.chat.completions.create(

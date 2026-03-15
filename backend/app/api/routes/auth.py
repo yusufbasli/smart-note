@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from app.auth import create_access_token, get_current_user, hash_password, verify_password
 from app.database import get_db
+from app.limiter import limiter
 from app.models import User
 from app.schemas import Token, UserCreate, UserRead
 
@@ -17,7 +18,8 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user",
 )
-def register(payload: UserCreate, db: Session = Depends(get_db)) -> User:
+@limiter.limit("10/minute")
+def register(request: Request, payload: UserCreate, db: Session = Depends(get_db)) -> User:
     """
     Username and email must be unique.
     Password is hashed with bcrypt before storage.
@@ -45,7 +47,9 @@ def register(payload: UserCreate, db: Session = Depends(get_db)) -> User:
     response_model=Token,
     summary="User login (get JWT token)",
 )
+@limiter.limit("20/minute")
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ) -> Token:

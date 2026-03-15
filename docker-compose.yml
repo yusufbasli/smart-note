@@ -28,6 +28,8 @@ services:
     environment:
       # Override DATABASE_URL so the app connects to the 'db' container
       DATABASE_URL: postgresql://postgres:password@db:5432/smartnote_db
+      # Restrict CORS to the local frontend origin
+      ALLOWED_ORIGINS: "http://localhost:3000"
     depends_on:
       db:
         condition: service_healthy

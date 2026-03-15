@@ -1,20 +1,13 @@
 import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  RefreshControl,
-  StyleSheet,
-  TextInput,
+  View, Text, ScrollView, TouchableOpacity, ActivityIndicator,
+  Alert, RefreshControl, StyleSheet, TextInput, useWindowDimensions,
 } from "react-native";
 import { useNotesStore } from "../store/notesStore";
 import CategoryBadge from "../components/CategoryBadge";
 import TaskItem from "../components/TaskItem";
 import type { NotesScreenProps } from "../navigation/types";
-import { colors, radius, shadow, CATEGORY_META } from "../theme";
+import { colors, radius, shadow, CATEGORY_META, layout } from "../theme";
 
 const todayNoonIso = () => {
   const d = new Date();
@@ -24,46 +17,42 @@ const todayNoonIso = () => {
 
 export default function NoteDetailScreen({ navigation, route }: NotesScreenProps<"NoteDetail">) {
   const { noteId } = route.params;
-  const { currentNote, fetchNote, deleteNote, analyzeNote, toggleTask, addTask, updateTask, deleteTask, isLoading } =
-    useNotesStore();
-  const [analyzing, setAnalyzing] = useState(false);
-  const [newTaskText, setNewTaskText] = useState("");
+  const {
+    currentNote, fetchNote, deleteNote, analyzeNote,
+    toggleTask, addTask, updateTask, deleteTask, isLoading,
+  } = useNotesStore();
+
+  const [analyzing,     setAnalyzing]     = useState(false);
+  const [newTaskText,   setNewTaskText]   = useState("");
   const [newTaskSaving, setNewTaskSaving] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [editTaskText, setEditTaskText] = useState("");
+  const [editTaskText,  setEditTaskText]  = useState("");
+
+  const { width } = useWindowDimensions();
+  const isDesktop  = width >= layout.desktopBreakpoint;
 
   useEffect(() => { fetchNote(noteId); }, [noteId]);
-
   useEffect(() => {
     if (currentNote) navigation.setOptions({ title: currentNote.title });
   }, [currentNote?.title]);
 
-  const handleDelete = () => {
+  const handleDelete = () =>
     Alert.alert("Delete Note", "This will also delete all tasks. Continue?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Delete", style: "destructive",
         onPress: async () => {
-          try {
-            await deleteNote(noteId);
-            navigation.goBack();
-          } catch (e: any) {
-            Alert.alert("Error", e?.response?.data?.detail ?? "Failed to delete note. Please try again.");
-          }
+          try { await deleteNote(noteId); navigation.goBack(); }
+          catch (e: any) { Alert.alert("Error", e?.response?.data?.detail ?? "Failed to delete."); }
         },
       },
     ]);
-  };
 
   const handleAnalyze = async () => {
     setAnalyzing(true);
-    try {
-      await analyzeNote(noteId);
-    } catch (e: any) {
-      Alert.alert("Error", e?.response?.data?.detail ?? "AI analysis failed.");
-    } finally {
-      setAnalyzing(false);
-    }
+    try { await analyzeNote(noteId); }
+    catch (e: any) { Alert.alert("Error", e?.response?.data?.detail ?? "AI analysis failed."); }
+    finally { setAnalyzing(false); }
   };
 
   const handleAddTask = async () => {
@@ -80,11 +69,6 @@ export default function NoteDetailScreen({ navigation, route }: NotesScreenProps
     }
   };
 
-  const startEditTask = (taskId: string, currentText: string) => {
-    setEditingTaskId(taskId);
-    setEditTaskText(currentText);
-  };
-
   const saveEditTask = async (taskId: string) => {
     const text = editTaskText.trim();
     if (!text) return;
@@ -92,208 +76,249 @@ export default function NoteDetailScreen({ navigation, route }: NotesScreenProps
       await updateTask(noteId, taskId, { task_text: text });
       setEditingTaskId(null);
       setEditTaskText("");
-    } catch (e: any) {
-      Alert.alert("Error", e?.response?.data?.detail ?? "Failed to update task.");
-    }
+    } catch (e: any) { Alert.alert("Error", e?.response?.data?.detail ?? "Failed to update task."); }
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    Alert.alert("Delete Task", "Are you sure you want to delete this task?", [
+  const handleDeleteTask = (taskId: string) =>
+    Alert.alert("Delete Task", "Are you sure?", [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Delete",
-        style: "destructive",
+        text: "Delete", style: "destructive",
         onPress: async () => {
-          try {
-            await deleteTask(noteId, taskId);
-          } catch (e: any) {
-            Alert.alert("Error", e?.response?.data?.detail ?? "Failed to delete task.");
-          }
+          try { await deleteTask(noteId, taskId); }
+          catch (e: any) { Alert.alert("Error", e?.response?.data?.detail ?? "Failed to delete task."); }
         },
       },
     ]);
-  };
 
   if (isLoading && !currentNote) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg }}>
+      <View style={s.centered}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
   if (!currentNote) return null;
 
-  const catMeta = currentNote.ai_category ? CATEGORY_META[currentNote.ai_category] : null;
+  const catMeta        = currentNote.ai_category ? CATEGORY_META[currentNote.ai_category] : null;
   const completedCount = currentNote.tasks.filter((t) => t.is_completed).length;
+  const totalTasks     = currentNote.tasks.length;
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: colors.bg }}
-      contentContainerStyle={{ paddingBottom: 48 }}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => fetchNote(noteId)} tintColor={colors.primary} />}
+      style={s.root}
+      contentContainerStyle={[
+        s.contentWrap,
+        isDesktop && { maxWidth: layout.formMaxWidth, alignSelf: "center", width: "100%" },
+      ]}
+      refreshControl={
+        <RefreshControl refreshing={isLoading} onRefresh={() => fetchNote(noteId)} tintColor={colors.primary} />
+      }
     >
-      {/* Title card */}
+      {/* Action bar */}
+      <View style={s.actionBar}>
+        <TouchableOpacity
+          style={s.btnPrimary}
+          onPress={() => navigation.navigate("NoteForm", { noteId })}
+        >
+          <Text style={s.btnPrimaryText}>✏️  Edit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.btnSecondary, analyzing && { opacity: 0.6 }]}
+          onPress={handleAnalyze}
+          disabled={analyzing}
+        >
+          {analyzing
+            ? <ActivityIndicator size="small" color={colors.primary} />
+            : <Text style={s.btnSecondaryText}>✨  Analyse</Text>}
+        </TouchableOpacity>
+      </View>
+
+      {/* Title */}
       <View style={[s.titleCard, catMeta && { borderTopColor: catMeta.bar }]}>
         <View style={s.titleRow}>
           <Text style={s.noteTitle}>{currentNote.title}</Text>
           {currentNote.ai_category && <CategoryBadge category={currentNote.ai_category} />}
         </View>
-        <Text style={s.dateText}>Updated {new Date(currentNote.updated_at).toLocaleString()}</Text>
+        <Text style={s.dateText}>
+          Updated {new Date(currentNote.updated_at).toLocaleString("en-US", {
+            month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+          })}
+        </Text>
       </View>
 
-      <View style={{ paddingHorizontal: 16 }}>
-        {/* AI Summary */}
-        {currentNote.ai_summary && (
-          <View style={s.summaryBox}>
-            <View style={s.summaryHeader}>
-              <Text style={s.summaryLabel}>✨ AI SUMMARY</Text>
-            </View>
-            <Text style={s.summaryText}>{currentNote.ai_summary}</Text>
+      {/* AI Summary */}
+      {currentNote.ai_summary && (
+        <View style={s.summaryBox}>
+          <View style={s.summaryHeader}>
+            <Text style={s.summaryLabel}>✨  AI SUMMARY</Text>
           </View>
-        )}
-
-        {/* Content */}
-        <View style={s.contentBox}>
-          <Text style={s.contentLabel}>NOTE</Text>
-          <Text style={s.contentText}>{currentNote.content}</Text>
+          <Text style={s.summaryText}>{currentNote.ai_summary}</Text>
         </View>
+      )}
 
-        {/* Tasks */}
-        <View style={s.tasksBox}>
-          <View style={s.tasksHeader}>
-            <Text style={s.tasksTitle}>Tasks</Text>
-            <View style={s.tasksBadge}>
-              <Text style={s.tasksBadgeText}>{completedCount}/{currentNote.tasks.length}</Text>
-            </View>
-          </View>
+      {/* Content */}
+      <View style={s.sectionBox}>
+        <Text style={s.sectionLabel}>NOTE</Text>
+        <Text style={s.contentText}>{currentNote.content}</Text>
+      </View>
 
-          <View style={s.taskCreateRow}>
-            <TextInput
-              value={newTaskText}
-              onChangeText={setNewTaskText}
-              placeholder="Add a task"
-              placeholderTextColor={colors.textMuted}
-              style={s.taskInput}
-              maxLength={500}
-              returnKeyType="done"
-              onSubmitEditing={handleAddTask}
-            />
-            <TouchableOpacity
-              style={[s.taskAddBtn, (!newTaskText.trim() || newTaskSaving) && { opacity: 0.5 }]}
-              disabled={!newTaskText.trim() || newTaskSaving}
-              onPress={handleAddTask}
-            >
-              {newTaskSaving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.taskAddText}>Add</Text>}
-            </TouchableOpacity>
-          </View>
-
-          {currentNote.tasks.length > 0 ? (
-            currentNote.tasks.map((task, i) => (
-              <View key={task.id}>
-                <TaskItem
-                  task={task}
-                  onToggle={() => toggleTask(noteId, task)}
-                  onEdit={() => startEditTask(task.id, task.task_text)}
-                  onDelete={() => handleDeleteTask(task.id)}
-                  showBorder={i < currentNote.tasks.length - 1 || editingTaskId === task.id}
+      {/* Tasks */}
+      <View style={s.tasksBox}>
+        <View style={s.tasksHeader}>
+          <Text style={s.tasksTitle}>Tasks</Text>
+          {totalTasks > 0 && (
+            <View style={s.progressGroup}>
+              <Text style={s.progressLabel}>{completedCount}/{totalTasks}</Text>
+              <View style={s.progressTrack}>
+                <View
+                  style={[
+                    s.progressFill,
+                    {
+                      width: `${(completedCount / totalTasks) * 100}%` as any,
+                      backgroundColor: completedCount === totalTasks ? colors.success : colors.primary,
+                    },
+                  ]}
                 />
-                {editingTaskId === task.id && (
-                  <View style={s.editTaskRow}>
-                    <TextInput
-                      value={editTaskText}
-                      onChangeText={setEditTaskText}
-                      placeholder="Task text"
-                      placeholderTextColor={colors.textMuted}
-                      style={s.editTaskInput}
-                      maxLength={500}
-                    />
-                    <View style={s.editActionsRow}>
-                      <TouchableOpacity style={s.editSaveBtn} onPress={() => saveEditTask(task.id)}>
-                        <Text style={s.editSaveText}>Save</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={s.editCancelBtn}
-                        onPress={() => {
-                          setEditingTaskId(null);
-                          setEditTaskText("");
-                        }}
-                      >
-                        <Text style={s.editCancelText}>Cancel</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
               </View>
-            ))
-          ) : (
-            <Text style={s.noTaskText}>No tasks yet.</Text>
+            </View>
           )}
         </View>
 
-        {/* Action row */}
-        <View style={s.actionRow}>
+        <View style={s.taskAddRow}>
+          <TextInput
+            value={newTaskText}
+            onChangeText={setNewTaskText}
+            placeholder="Add a task…"
+            placeholderTextColor={colors.textMuted}
+            style={s.taskInput}
+            maxLength={500}
+            returnKeyType="done"
+            onSubmitEditing={handleAddTask}
+          />
           <TouchableOpacity
-            style={[s.actionBtn, s.actionBtnPrimary]}
-            onPress={() => navigation.navigate("NoteForm", { noteId })}
+            style={[s.taskAddBtn, (!newTaskText.trim() || newTaskSaving) && { opacity: 0.45 }]}
+            disabled={!newTaskText.trim() || newTaskSaving}
+            onPress={handleAddTask}
           >
-            <Text style={s.actionBtnPrimaryText}>✏️  Edit</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[s.actionBtn, s.actionBtnSecondary]}
-            onPress={handleAnalyze}
-            disabled={analyzing}
-          >
-            {analyzing
-              ? <ActivityIndicator size="small" color={colors.primary} />
-              : <Text style={s.actionBtnSecondaryText}>✨  AI</Text>
-            }
+            {newTaskSaving
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={s.taskAddBtnText}>Add</Text>}
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={s.deleteBtn} onPress={handleDelete}>
-          <Text style={s.deleteBtnText}>Delete Note</Text>
-        </TouchableOpacity>
+        {currentNote.tasks.length === 0 ? (
+          <Text style={s.noTasks}>No tasks yet.</Text>
+        ) : (
+          currentNote.tasks.map((task, i) => (
+            <View key={task.id}>
+              <TaskItem
+                task={task}
+                onToggle={() => toggleTask(noteId, task)}
+                onEdit={() => { setEditingTaskId(task.id); setEditTaskText(task.task_text); }}
+                onDelete={() => handleDeleteTask(task.id)}
+                showBorder={i < currentNote.tasks.length - 1 || editingTaskId === task.id}
+              />
+              {editingTaskId === task.id && (
+                <View style={s.editRow}>
+                  <TextInput
+                    value={editTaskText}
+                    onChangeText={setEditTaskText}
+                    style={s.editInput}
+                    placeholderTextColor={colors.textMuted}
+                    maxLength={500}
+                  />
+                  <View style={s.editActions}>
+                    <TouchableOpacity style={s.editSave} onPress={() => saveEditTask(task.id)}>
+                      <Text style={s.editSaveText}>Save</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={s.editCancel}
+                      onPress={() => { setEditingTaskId(null); setEditTaskText(""); }}
+                    >
+                      <Text style={s.editCancelText}>Cancel</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </View>
+          ))
+        )}
       </View>
+
+      {/* Delete */}
+      <TouchableOpacity style={s.deleteBtn} onPress={handleDelete}>
+        <Text style={s.deleteBtnText}>Delete Note</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  titleCard:       { backgroundColor: colors.surface, borderTopWidth: 3, borderTopColor: colors.primary, padding: 20, marginBottom: 16, ...shadow.sm },
-  titleRow:        { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 },
-  noteTitle:       { fontSize: 22, fontWeight: "800", color: colors.textPrimary, flex: 1, marginRight: 10, lineHeight: 28 },
-  dateText:        { fontSize: 11, color: colors.textMuted },
-  summaryBox:      { backgroundColor: "#EEF2FF", borderRadius: radius.lg, overflow: "hidden", marginBottom: 14 },
-  summaryHeader:   { backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8 },
-  summaryLabel:    { fontSize: 11, fontWeight: "800", color: "#fff", letterSpacing: 0.8 },
-  summaryText:     { fontSize: 14, color: colors.textPrimary, lineHeight: 22, padding: 14 },
-  contentBox:      { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 16, marginBottom: 14, ...shadow.sm },
-  contentLabel:    { fontSize: 10, fontWeight: "800", color: colors.textMuted, letterSpacing: 1, marginBottom: 10 },
-  contentText:     { fontSize: 15, color: colors.textPrimary, lineHeight: 26 },
-  tasksBox:        { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: "hidden", marginBottom: 20, ...shadow.sm },
-  tasksHeader:     { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
-  tasksTitle:      { fontSize: 14, fontWeight: "700", color: colors.textPrimary, flex: 1 },
-  tasksBadge:      { backgroundColor: colors.primary, borderRadius: radius.full, paddingHorizontal: 8, paddingVertical: 2 },
-  tasksBadgeText:  { color: "#fff", fontSize: 11, fontWeight: "700" },
-  taskCreateRow:   { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
-  taskInput:       { flex: 1, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.textPrimary, backgroundColor: colors.bg },
-  taskAddBtn:      { backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: 14, justifyContent: "center" },
-  taskAddText:     { color: "#fff", fontWeight: "700", fontSize: 13 },
-  noTaskText:      { color: colors.textMuted, fontSize: 13, paddingHorizontal: 16, paddingBottom: 16, paddingTop: 6 },
-  editTaskRow:     { paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: colors.borderLight, backgroundColor: colors.bg },
-  editTaskInput:   { borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.textPrimary, backgroundColor: colors.surface },
-  editActionsRow:  { flexDirection: "row", gap: 8, marginTop: 8 },
-  editSaveBtn:     { backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 8 },
-  editSaveText:    { color: "#fff", fontWeight: "700", fontSize: 12 },
-  editCancelBtn:   { backgroundColor: colors.surface, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, paddingVertical: 8 },
-  editCancelText:  { color: colors.textSecondary, fontWeight: "700", fontSize: 12 },
-  actionRow:       { flexDirection: "row", gap: 12, marginBottom: 12 },
-  actionBtn:       { flex: 1, borderRadius: radius.md, paddingVertical: 14, alignItems: "center", justifyContent: "center" },
-  actionBtnPrimary:{ backgroundColor: colors.primary, ...shadow.primary },
-  actionBtnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 15 },
-  actionBtnSecondary:   { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primary, ...shadow.sm },
-  actionBtnSecondaryText: { color: colors.primary, fontWeight: "700", fontSize: 15 },
-  deleteBtn:       { borderRadius: radius.md, paddingVertical: 13, alignItems: "center", borderWidth: 1.5, borderColor: colors.danger },
-  deleteBtnText:   { color: colors.danger, fontWeight: "600", fontSize: 15 },
+  root:       { flex: 1, backgroundColor: colors.bg },
+  contentWrap:{ paddingHorizontal: 16, paddingBottom: 48, paddingTop: 8 },
+  centered:   { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.bg },
+
+  actionBar: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  btnPrimary: {
+    flex: 1, backgroundColor: colors.primary, borderRadius: radius.md,
+    paddingVertical: 13, alignItems: "center", ...shadow.primary,
+  },
+  btnPrimaryText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  btnSecondary: {
+    flex: 1, backgroundColor: colors.surface, borderRadius: radius.md,
+    paddingVertical: 13, alignItems: "center",
+    borderWidth: 1.5, borderColor: colors.primary, ...shadow.xs,
+  },
+  btnSecondaryText: { color: colors.primary, fontWeight: "700", fontSize: 14 },
+
+  titleCard: {
+    backgroundColor: colors.surface, borderRadius: radius.lg,
+    borderTopWidth: 3, borderTopColor: colors.primary,
+    padding: 18, marginBottom: 14, ...shadow.sm,
+  },
+  titleRow: {
+    flexDirection: "row", justifyContent: "space-between",
+    alignItems: "flex-start", marginBottom: 8,
+  },
+  noteTitle: { fontSize: 22, fontWeight: "800", color: colors.textPrimary, flex: 1, marginRight: 10, lineHeight: 28 },
+  dateText:  { fontSize: 11, color: colors.textMuted },
+
+  summaryBox:    { backgroundColor: colors.primaryBg, borderRadius: radius.lg, overflow: "hidden", marginBottom: 14 },
+  summaryHeader: { backgroundColor: colors.primary, paddingHorizontal: 14, paddingVertical: 8 },
+  summaryLabel:  { fontSize: 11, fontWeight: "800", color: "#fff", letterSpacing: 0.8 },
+  summaryText:   { fontSize: 14, color: colors.textPrimary, lineHeight: 22, padding: 14 },
+
+  sectionBox:   { backgroundColor: colors.surface, borderRadius: radius.lg, padding: 16, marginBottom: 14, ...shadow.sm },
+  sectionLabel: { fontSize: 10, fontWeight: "800", color: colors.textMuted, letterSpacing: 1.2, marginBottom: 10 },
+  contentText:  { fontSize: 15, color: colors.textPrimary, lineHeight: 26 },
+
+  tasksBox:    { backgroundColor: colors.surface, borderRadius: radius.lg, overflow: "hidden", marginBottom: 18, ...shadow.sm },
+  tasksHeader: { flexDirection: "row", alignItems: "center", padding: 16, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
+  tasksTitle:  { flex: 1, fontSize: 14, fontWeight: "700", color: colors.textPrimary },
+  progressGroup:{ alignItems: "flex-end", gap: 4 },
+  progressLabel: { fontSize: 11, fontWeight: "600", color: colors.textMuted },
+  progressTrack: { width: 60, height: 4, backgroundColor: colors.borderLight, borderRadius: 2, overflow: "hidden" },
+  progressFill:  { height: 4, borderRadius: 2 },
+
+  taskAddRow: {
+    flexDirection: "row", gap: 8,
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: colors.borderLight,
+  },
+  taskInput:      { flex: 1, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.textPrimary, backgroundColor: colors.bg },
+  taskAddBtn:     { backgroundColor: colors.primary, borderRadius: radius.md, paddingHorizontal: 14, justifyContent: "center" },
+  taskAddBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  noTasks:        { color: colors.textMuted, fontSize: 13, padding: 16 },
+
+  editRow:     { paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: colors.borderLight, backgroundColor: colors.bg },
+  editInput:   { borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, color: colors.textPrimary, backgroundColor: colors.surface, marginTop: 4 },
+  editActions: { flexDirection: "row", gap: 8, marginTop: 8 },
+  editSave:    { backgroundColor: colors.primary, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 8 },
+  editSaveText:{ color: "#fff", fontWeight: "700", fontSize: 12 },
+  editCancel:  { backgroundColor: colors.surface, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 14, paddingVertical: 8 },
+  editCancelText: { color: colors.textSecondary, fontWeight: "700", fontSize: 12 },
+
+  deleteBtn:     { borderRadius: radius.md, paddingVertical: 13, alignItems: "center", borderWidth: 1.5, borderColor: colors.danger },
+  deleteBtnText: { color: colors.danger, fontWeight: "600", fontSize: 14 },
 });

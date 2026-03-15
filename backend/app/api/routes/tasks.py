@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -86,9 +87,18 @@ def update_task(
 ) -> Task:
     _get_note_or_404(note_id, current_user.id, db)
     task = _get_task_or_404(task_id, note_id, db)
-    update_data = payload.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(task, field, value)
+    if payload.task_text is not None:
+        task.task_text = payload.task_text.strip()
+    if payload.is_recurring is not None:
+        task.is_recurring = payload.is_recurring
+    if payload.due_date is not None:
+        task.due_date = payload.due_date
+    if payload.is_completed is not None:
+        task.is_completed = payload.is_completed
+        # For recurring tasks: track the last date it was completed so
+        # the frontend can reset the display each new day.
+        if task.is_recurring:
+            task.last_completed_date = date.today() if payload.is_completed else None
     db.commit()
     db.refresh(task)
     return task

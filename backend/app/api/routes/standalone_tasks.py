@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone, date
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -73,7 +74,6 @@ def list_tasks(
 
     if start is not None:
         # Period-specific tasks OR recurring tasks (always shown)
-        from sqlalchemy import or_
         date_filter = (Task.due_date >= start) & (Task.due_date < end)
         base = base.filter(or_(date_filter, Task.is_recurring == True))  # noqa: E712
     # else: "all" -- no date filter

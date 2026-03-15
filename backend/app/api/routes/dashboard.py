@@ -27,7 +27,8 @@ def get_tasks_today(
 ) -> list[Task]:
     """
     Returns every incomplete task (is_completed=False) whose due_date falls on
-    the requested day.  Tasks with no due_date are excluded.
+    the requested day.  Both note-linked and standalone tasks are included.
+    Tasks with no due_date are excluded.
     """
     # Use UTC date; SQLite stores datetimes as naive (no tzinfo) so comparisons
     # must also use naive UTC datetimes to avoid TypeError.
@@ -38,9 +39,8 @@ def get_tasks_today(
 
     return (
         db.query(Task)
-        .join(Note, Task.note_id == Note.id)
         .filter(
-            Note.user_id == current_user.id,
+            Task.user_id == current_user.id,
             Task.is_completed == False,  # noqa: E712
             Task.due_date >= day_start,
             Task.due_date <= day_end,

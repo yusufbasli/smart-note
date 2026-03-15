@@ -1,27 +1,39 @@
 # Smart Note
 
-Smart Note is an AI-powered note and task manager with a FastAPI backend and an Expo React Native frontend.
+An AI-powered note and task management application with a FastAPI backend, PostgreSQL database, and a responsive Expo React Native frontend that runs on web, Android, and iOS.
 
-- Web client on `http://localhost:3000`
-- API docs on `http://localhost:8000/docs`
-- Mobile support via Expo (Android/iOS)
+| Service | URL |
+|---------|-----|
+| Web client | http://localhost:8081 (dev) / http://localhost:3000 (Docker) |
+| API | http://localhost:8000/api/v1 |
+| Swagger UI | http://localhost:8000/docs |
 
-## Why This Project Is Internship-Ready
+---
 
-- Full-stack architecture (backend API + frontend app + database)
-- Production-like setup with Docker, migrations, and environment-based config
-- Authentication, validation, and test coverage on core backend flows
-- AI integration designed to fail safely (app still works if AI is unavailable)
+## Features
+
+- **Authentication** — JWT register/login with bcrypt password hashing and rate-limited endpoints
+- **Notes** — full CRUD with full-text search, category filter, and pagination
+- **AI analysis** — GPT-4o-mini categorises a note, generates a summary, and extracts tasks with inferred due dates
+- **Task management** — tasks nested under notes or created as standalone; recurring task support with daily reset logic
+- **Dashboard** — tasks filtered by period (`today`, `tomorrow`, `week`, `all`) and a note count breakdown by AI category
+- **Responsive UI** — persistent top navigation bar on desktop (≥768 px), bottom tab bar on mobile
+
+---
 
 ## Repository Structure
 
 ```
 smart-note/
-├── backend/    # FastAPI + SQLAlchemy + PostgreSQL + Alembic
-└── frontend/   # Expo + React Native + TypeScript
+├── backend/     # FastAPI · SQLAlchemy 2.x · PostgreSQL · Alembic
+├── frontend/    # Expo · React Native · TypeScript
+├── docs/        # Screenshots and assets
+└── docker-compose.yml
 ```
 
-## Quick Start (Docker, Recommended)
+---
+
+## Quick Start — Docker (Recommended)
 
 Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
@@ -31,19 +43,21 @@ cd smart-note
 cp backend/.env.example backend/.env
 ```
 
-Edit `backend/.env` and set only this if you want AI enabled:
+Set your OpenAI key in `backend/.env` (optional — app works without it):
 
 ```env
 OPENAI_API_KEY=sk-...
 ```
 
-Then run:
+Start all services:
 
 ```bash
 docker compose up --build
 ```
 
-PostgreSQL, backend, migrations, and frontend web app are started automatically.
+PostgreSQL, the backend API, migrations, and the frontend web app all start automatically.
+
+---
 
 ## Manual Setup
 
@@ -51,8 +65,17 @@ PostgreSQL, backend, migrations, and frontend web app are started automatically.
 
 ```bash
 cd backend
+python -m venv .venv
+
+# Windows
+.\.venv\Scripts\activate
+# macOS / Linux
+source .venv/bin/activate
+
 pip install -r requirements.txt
 cp .env.example .env
+# edit .env — set DATABASE_URL, SECRET_KEY, OPENAI_API_KEY
+
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
@@ -63,22 +86,22 @@ uvicorn app.main:app --reload
 cd frontend
 npm install
 cp .env.example .env
-npm run start
+# .env: set EXPO_PUBLIC_API_BASE_URL=http://localhost:8000/api/v1
+
+npx expo start --web   # web
+npx expo start         # interactive (web / iOS / Android)
 ```
 
-For web directly:
-
-```bash
-npm run web
-```
+---
 
 ## Validation
 
-Backend tests:
+Backend tests (SQLite, no PostgreSQL required):
 
 ```bash
 cd backend
-pytest tests/ -q
+pip install -r requirements-dev.txt
+pytest tests/ -v
 ```
 
 Frontend type check:
@@ -88,83 +111,74 @@ cd frontend
 npm run typecheck
 ```
 
-## Features
+---
 
-- JWT authentication (register/login/me)
-- Notes CRUD with search, filters, and pagination
-- AI category + summary + task extraction from note content
-- Task management under notes and as standalone tasks
-- Period filters (`today`, `tomorrow`, `week`, `all`) for dashboard tasks
-- Recurring task support with daily completion behavior
-- Dockerized local environment
+## Usage Walkthrough
 
-## Architecture (High Level)
+1. Open http://localhost:8081 and create an account.
+2. Tap **+** to create a note; AI analysis runs automatically on save.
+3. Open the note and add tasks in the **Tasks** section.
+4. Navigate to **Dashboard** and switch period tabs to view tasks by date.
+5. Mark tasks done, edit, or delete them directly from the dashboard.
+6. Tap **✨ Analyse** on a note detail page to re-run AI analysis at any time.
 
-1. Frontend calls backend REST endpoints under `/api/v1`.
-2. Backend authenticates requests with JWT bearer tokens.
-3. Notes and tasks are persisted in PostgreSQL via SQLAlchemy.
-4. Optional OpenAI analysis enriches notes with category/summary/tasks.
-5. Alembic keeps schema changes versioned and reproducible.
+> If AI returns `503`, the most common cause is an exhausted OpenAI quota (`429`). The note is saved normally regardless.
 
-## Example Usage
-
-Use this flow to quickly verify the app after startup:
-
-1. Open `http://localhost:3000` and create an account.
-2. Create a note from the `+` button in the notes screen.
-3. Open the note detail page and add tasks in the `Tasks` box.
-4. Go to `Dashboard` and switch period tabs (`today`, `tomorrow`, `week`, `all`) to view tasks.
-5. Mark tasks done, edit them, and delete them from dashboard controls.
-6. Trigger AI analysis with the `AI` button on note detail (requires valid OpenAI quota).
-
-Notes:
-
-- If AI returns `503`, check backend logs; the common cause is OpenAI `429 insufficient_quota`.
-- Task visibility on dashboard depends on due date + selected period.
+---
 
 ## Screenshots
 
-The following screenshots reflect the current web UI flow:
-
 ### Register
 
-![Register screen](docs/screenshots/register.png)
+![Register](docs/screenshots/register.png)
 
 ### Notes List
 
-![Notes list screen](docs/screenshots/notes-list.png)
+![Notes list](docs/screenshots/notes-list.png)
 
 ### Note Detail
 
-![Note detail screen](docs/screenshots/note-detail.png)
+![Note detail](docs/screenshots/note-detail.png)
 
-### Dashboard (pending)
+### Dashboard — Pending Tasks
 
-![Dashboard pending tasks](docs/screenshots/dashboard-pending.png)
+![Dashboard pending](docs/screenshots/dashboard-pending.png)
 
-### Dashboard (completed)
+### Dashboard — Completed Tasks
 
-![Dashboard completed tasks](docs/screenshots/dashboard-completed.png)
+![Dashboard completed](docs/screenshots/dashboard-completed.png)
 
-## Troubleshooting
-
-- `AI button returns 503`: check backend logs; most common cause is OpenAI `429 insufficient_quota`.
-- `docker compose` command not found: install Docker Desktop and restart terminal.
-- Dashboard task not visible: switch period tab (`today` / `tomorrow` / `week` / `all`) and confirm task due date.
-- Username validation error: use only letters, numbers, underscore (`^[a-zA-Z0-9_]+$`).
+---
 
 ## Tech Stack
 
 | Layer | Technology |
-|---|---|
-| Backend API | FastAPI, SQLAlchemy 2.x, PostgreSQL |
-| Auth | JWT (python-jose) + bcrypt |
+|-------|------------|
+| Backend API | FastAPI 0.115, Python 3.13 |
+| ORM & DB | SQLAlchemy 2.x, PostgreSQL 16, Alembic |
+| Auth | JWT (python-jose), bcrypt, SlowAPI rate limiting |
 | AI | OpenAI GPT-4o-mini |
-| Mobile & Web | Expo, React Native, TypeScript |
-| Styling | NativeWind |
-| State | Zustand + AsyncStorage |
+| Frontend | Expo 55, React Native 0.83, TypeScript |
+| Navigation | React Navigation 7 |
+| State | Zustand 5, AsyncStorage |
+| HTTP | Axios |
+| Container | Docker, Docker Compose |
 
-## More Docs
+---
 
-- Backend details: `backend/README.md`
-- Frontend details: `frontend/README.md`
+## Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| AI button returns `503` | Check backend logs; likely OpenAI `429 insufficient_quota` |
+| `docker compose` not found | Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and restart the terminal |
+| Dashboard task not visible | Switch the period tab and verify the task's due date |
+| Username validation error | Usernames must match `^[a-zA-Z0-9_]+$` |
+| Mobile app can't reach API | Use your LAN IP instead of `localhost` in `EXPO_PUBLIC_API_BASE_URL` |
+
+---
+
+## Docs
+
+- [Backend README](backend/README.md) — API reference, environment variables, test guide
+- [Frontend README](frontend/README.md) — UI architecture, environment setup, run commands

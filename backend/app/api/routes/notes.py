@@ -12,6 +12,10 @@ from app.models import Note, Task, User
 from app.schemas import NoteCreate, NoteRead, NoteReadWithTasks, NoteUpdate
 from app.services.ai_service import analyze_note
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def _when_to_due_date(when: str | None) -> datetime | None:
     """Convert an AI 'when' hint (today/tomorrow/this week) to a noon-UTC datetime."""
@@ -83,8 +87,8 @@ def create_note(
                     db.add(Task(note_id=note.id, user_id=current_user.id, task_text=task_text, due_date=due))
             db.commit()
             db.refresh(note)
-    except Exception:
-        pass  # AI error is non-critical; note was already saved
+    except Exception as exc:
+        logger.error("AI post-processing error for note %s: %s", note.id, exc)
 
     return note
 

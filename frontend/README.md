@@ -1,50 +1,63 @@
-# Smart Note Frontend
+# Smart Note — Frontend
 
-Expo + React Native client for Smart Note. Works on:
-- Web (`expo start --web`)
-- Android emulator/device
-- iOS simulator/device
+Expo React Native client for Smart Note. Runs on **web**, **Android**, and **iOS** from a single codebase with a responsive layout that adapts to each form factor.
+
+---
 
 ## Tech Stack
 
-- Expo + React Native + TypeScript
-- React Navigation
-- NativeWind
-- Zustand + AsyncStorage
-- Axios
+| Layer | Technology |
+|-------|------------|
+| Framework | Expo 55, React Native 0.83 |
+| Language | TypeScript |
+| Navigation | React Navigation 7 (native stack + bottom tabs) |
+| State management | Zustand 5, AsyncStorage (persisted auth token) |
+| HTTP | Axios |
+| Styling | React Native StyleSheet |
+
+---
 
 ## Prerequisites
 
 - Node.js 20+
 - npm
-- Backend API running on port `8000`
+- Backend API running on port `8000` (see [backend/README.md](../backend/README.md))
 
-## Environment
+---
 
-Create frontend env file:
+## Environment Setup
 
 ```bash
 cp .env.example .env
 ```
 
-Set `EXPO_PUBLIC_API_BASE_URL` according to where backend is running:
+Set `EXPO_PUBLIC_API_BASE_URL` to match your backend:
 
-- Local web: `http://localhost:8000/api/v1`
-- Android emulator: `http://10.0.2.2:8000/api/v1`
-- Physical device: `http://<YOUR_LAN_IP>:8000/api/v1`
+| Scenario | Value |
+|----------|-------|
+| Local web | `http://localhost:8000/api/v1` |
+| Android emulator | `http://10.0.2.2:8000/api/v1` |
+| Physical device (same Wi-Fi) | `http://<YOUR_LAN_IP>:8000/api/v1` |
 
-## Run
+---
+
+## Running
 
 ```bash
 npm install
-npm run start
+
+# Interactive menu (choose web / Android / iOS)
+npx expo start
+
+# Web directly
+npx expo start --web
+
+# Specific platform
+npx expo start --android
+npx expo start --ios
 ```
 
-For web directly:
-
-```bash
-npm run web
-```
+---
 
 ## Validation
 
@@ -52,26 +65,67 @@ npm run web
 npm run typecheck
 ```
 
-## Main Features
+---
 
-- Register / login / persisted session
-- Notes list with search + category filters
-- Create/edit/delete notes
-- AI analyze trigger on notes
-- Inline task management
+## Responsive Design
+
+The UI uses `useWindowDimensions` to apply a 768 px breakpoint:
+
+| Viewport | Navigation | Layout |
+|----------|-----------|--------|
+| ≥ 768 px (desktop/tablet) | Persistent top navigation bar | Centered content, 2-column note grid |
+| < 768 px (mobile) | Bottom tab bar | Single-column, full-width |
+
+The top navigation bar (desktop) shows the active tab highlight, the current username, and a Sign out button. The bottom tab bar (mobile) uses icon + label pairs with an active background pill.
+
+---
+
+## Features
+
+- Register, login, and persistent session via AsyncStorage
+- Notes list with search and category chip filters
+- Two-column notes grid on desktop; single column on mobile
+- Create / edit / delete notes with a centered form (max-width 640 px on desktop)
+- AI analysis trigger on note detail — displays summary and AI-assigned category badge
+- Inline task management on note detail with progress bar
 - Dashboard with period filters (`today`, `tomorrow`, `week`, `all`)
-- Standalone tasks with recurring support
+- Standalone tasks with optional recurring (daily-reset) flag
+- Date picker strip for selecting task due dates
+- Pull-to-refresh on all list screens
+
+---
+
+## Project Structure
+
+```
+frontend/src/
+├── api/               # Axios instances and endpoint helpers
+├── components/        # Shared UI components (CategoryBadge, TaskItem, DesktopHeader)
+├── navigation/        # React Navigation stacks and tabs (MainTabs, NotesStack, AuthStack)
+├── screens/           # Screen components (Login, Register, NotesList, NoteDetail, NoteForm, Dashboard)
+├── store/             # Zustand stores (authStore, notesStore)
+├── theme/             # Design tokens (colors, radius, shadow, layout, CATEGORY_META)
+└── types/             # TypeScript API types
+```
+
+---
 
 ## Quick Demo Flow
 
-1. Register and log in.
-2. Create a note from the `+` button.
-3. Add tasks from note detail.
-4. Open Dashboard and verify task visibility by period.
-5. Edit, complete, and delete tasks from dashboard controls.
+1. Open http://localhost:8081 and register an account.
+2. Tap **+** to create a note — AI analysis runs automatically on save.
+3. Open the note, add tasks in the **Tasks** section.
+4. Navigate to **Dashboard** and switch period tabs to view tasks by date.
+5. Mark tasks done, edit, or delete them from the dashboard controls.
+6. Tap **✨ Analyse** on a note detail page to re-run AI category and summary.
+
+---
 
 ## Troubleshooting
 
-- Cannot connect to API: check `EXPO_PUBLIC_API_BASE_URL` in `.env`.
-- App works on web but not mobile device: use your LAN IP instead of `localhost`.
-- AI action fails: backend may return `503` when OpenAI quota is unavailable.
+| Symptom | Fix |
+|---------|-----|
+| Cannot reach API | Check `EXPO_PUBLIC_API_BASE_URL` in `.env` |
+| Works on web, fails on device | Use your LAN IP instead of `localhost` |
+| AI action fails with `503` | Backend is returning an OpenAI quota error — note is still saved |
+| Screen layout broken | Resize the window across the 768 px breakpoint to trigger the layout switch |

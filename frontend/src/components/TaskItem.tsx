@@ -47,17 +47,17 @@ export default function TaskItem({ task, onToggle, onEdit, onDelete, showBorder 
 }
 
 const s = StyleSheet.create({
-  row:         { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13, gap: 10 },
+  row:         { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
   border:      { borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   toggleArea:  { paddingVertical: 2 },
-  circle:      { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
+  circle:      { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, alignItems: "center", justifyContent: "center" },
   circleActive:{ backgroundColor: colors.success, borderColor: colors.success },
-  text:        { fontSize: 14, color: colors.textPrimary, lineHeight: 20 },
-  textDone:    { color: colors.textMuted, textDecorationLine: "line-through" },
+  text:        { fontSize: 14, color: colors.textPrimary, lineHeight: 21, fontWeight: "500" },
+  textDone:    { color: colors.textMuted, textDecorationLine: "line-through", fontWeight: "400" },
   due:         { fontSize: 11, color: colors.textMuted, marginTop: 3 },
   actionRow:   { flexDirection: "row", gap: 6 },
-  actionBtn:   { paddingHorizontal: 8, paddingVertical: 5, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.border },
+  actionBtn:   { paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.sm, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface },
   actionText:  { fontSize: 11, color: colors.textSecondary, fontWeight: "700" },
-  deleteBtn:   { borderColor: colors.dangerLight, backgroundColor: colors.dangerLight },
+  deleteBtn:   { borderColor: colors.dangerBg, backgroundColor: colors.dangerBg },
   deleteText:  { color: colors.danger },
 });

@@ -1,15 +1,25 @@
 import React from "react";
-import { View, Text } from "react-native";
-import { CATEGORY_META } from "../theme";
+import { View, Text, StyleSheet } from "react-native";
+import { CATEGORY_META, radius } from "../theme";
 
 export default function CategoryBadge({ category }: { category: string }) {
   const meta = CATEGORY_META[category] ?? CATEGORY_META["#other"];
   return (
-    <View style={{ backgroundColor: meta.bg, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, flexDirection: "row", alignItems: "center", gap: 3 }}>
-      <Text style={{ fontSize: 10 }}>{meta.icon}</Text>
-      <Text style={{ color: meta.text, fontSize: 11, fontWeight: "700" }}>
+    <View style={[s.badge, { backgroundColor: meta.bg }]}>
+      <Text style={s.icon}>{meta.icon}</Text>
+      <Text style={[s.label, { color: meta.text }]}>
         {category.replace("#", "")}
       </Text>
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  badge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: radius.full,
+  },
+  icon:  { fontSize: 11 },
+  label: { fontSize: 11, fontWeight: "700", textTransform: "capitalize" },
+});

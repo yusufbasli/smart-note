@@ -9,10 +9,11 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
 } from "react-native";
 import { useNotesStore } from "../store/notesStore";
 import type { NotesScreenProps } from "../navigation/types";
-import { colors, radius, shadow, CATEGORY_META } from "../theme";
+import { colors, radius, shadow, CATEGORY_META, layout } from "../theme";
 
 const CATEGORIES = Object.keys(CATEGORY_META) as (keyof typeof CATEGORY_META)[];
 
@@ -24,6 +25,9 @@ export default function NoteFormScreen({ navigation, route }: NotesScreenProps<"
   const [content,  setContent]  = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [error,    setError]    = useState("");
+
+  const { width } = useWindowDimensions();
+  const isDesktop  = width >= layout.desktopBreakpoint;
 
   useEffect(() => {
     if (noteId) fetchNote(noteId);
@@ -63,10 +67,13 @@ export default function NoteFormScreen({ navigation, route }: NotesScreenProps<"
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.bg }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <ScrollView
-        style={{ flex: 1, backgroundColor: colors.bg }}
-        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={[
+          s.contentWrap,
+          isDesktop && { maxWidth: layout.formMaxWidth, alignSelf: "center", width: "100%" },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
         {error ? (
@@ -148,16 +155,17 @@ export default function NoteFormScreen({ navigation, route }: NotesScreenProps<"
 }
 
 const s = StyleSheet.create({
-  fieldGroup:  { marginBottom: 20 },
+  contentWrap:  { padding: 16, paddingBottom: 48 },
+  fieldGroup:  { marginBottom: 22 },
   labelRow:    { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 },
-  label:       { fontSize: 13, fontWeight: "700", color: colors.textSecondary, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
+  label:       { fontSize: 11, fontWeight: "800", color: colors.textMuted, marginBottom: 6, textTransform: "uppercase", letterSpacing: 1 },
   labelHint:   { fontSize: 11, fontWeight: "400", color: colors.textMuted, textTransform: "none", letterSpacing: 0 },
   counter:     { fontSize: 11, color: colors.textMuted, textAlign: "right", marginTop: 4 },
-  input:       { borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, backgroundColor: colors.surface, color: colors.textPrimary },
+  input:       { borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 16, paddingVertical: 13, fontSize: 15, backgroundColor: colors.surface, color: colors.textPrimary, ...shadow.xs },
   textarea:    { minHeight: 220, lineHeight: 24 },
   btn:         { backgroundColor: colors.primary, borderRadius: radius.md, paddingVertical: 15, alignItems: "center", marginTop: 8, ...shadow.primary },
   btnText:     { color: "#fff", fontWeight: "700", fontSize: 16, letterSpacing: 0.3 },
-  errorBox:    { backgroundColor: colors.dangerLight, borderRadius: radius.sm, padding: 12, marginBottom: 16 },
+  errorBox:    { backgroundColor: colors.dangerBg, borderRadius: radius.sm, padding: 12, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: colors.danger },
   errorText:   { color: colors.danger, fontSize: 13, lineHeight: 18 },
   categoryRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   catPill:     { flexDirection: "row", alignItems: "center", borderWidth: 1.5, borderRadius: radius.full, paddingHorizontal: 12, paddingVertical: 7, gap: 5 },
